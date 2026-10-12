@@ -374,9 +374,22 @@ function render() {
   content.innerHTML = summary + bestHTML +
     `<div class="card"><h3>All recorded shots</h3>${tableHTML(items.slice().reverse(), true)}
     <p><button class="danger" onclick="deleteSelected()">Delete selected club's shots</button></p></div>`;
-}
-function statCard(label,value) {
-  return `<div class="card"><div class="muted">label</div><divclass="stat">{value}</div></div>`;
+function statCard(label, value) {
+  const card = document.createElement("div");
+  card.className = "card";
+
+  const heading = document.createElement("div");
+  heading.className = "muted";
+  heading.textContent = label;
+
+  const number = document.createElement("div");
+  number.className = "stat";
+  number.textContent = value;
+
+  card.appendChild(heading);
+  card.appendChild(number);
+
+  return card.outerHTML;
 }
 function tableHTML(items, includeClub) {
   const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;

@@ -1,20 +1,487 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Golf Performance Lab</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Golf Performance Lab</title>
+<style>
+:root {
+  --bg: #f3f6f2;
+  --green: #176b45;
+  --dark: #153b2b;
+  --card: #ffffff;
+  --muted: #63736a;
+  --border: #dce5dc;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: var(--bg);
+  color: #17251c;
+}
+header {
+  background: var(--dark);
+  color: white;
+  padding: 25px max(20px, calc((100% - 1100px)/2));
+}
+header h1 { margin: 0 0 8px; font-size: 29px; }
+header p { margin: 0; color: #d4e7da; }
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px max(15px, calc((100% - 1100px)/2));
+  background: white;
+  border-bottom: 1px solid var(--border);
+}
+button, input, select { font: inherit; }
+nav button, .button {
+  border: 0;
+  border-radius: 8px;
+  padding: 11px 15px;
+  cursor: pointer;
+}
+nav button { background: #edf3ed; color: var(--dark); }
+nav button.active, .primary {
+  background: var(--green);
+  color: white;
+}
+main {
+  max-width: 1100px;
+  margin: 25px auto;
+  padding: 0 18px 45px;
+}
+.page { display: none; }
+.page.active { display: block; }
+h2 { margin-top: 0; }
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 15px;
+}
+.card {
+  background: var(--card);
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  margin-bottom: 16px;
+}
+.stat { font-size: 27px; font-weight: bold; color: var(--green); }
+.muted { color: var(--muted); font-size: 14px; }
+label { display: block; font-size: 14px; margin-bottom: 5px; }
+input, select {
+  width: 100%;
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #cbd7cc;
+  border-radius: 7px;
+  background: white;
+}
+.field { margin-bottom: 14px; }
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.primary, .secondary, .danger {
+  border: 0;
+  border-radius: 7px;
+  padding: 11px 15px;
+  cursor: pointer;
+}
+.secondary { background: #e7eee8; color: var(--dark); }
+.danger { background: #fbe9e7; color: #9b2920; }
+button:hover { filter: brightness(.96); }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+}
+.table-wrap { overflow-x: auto; }
+.notice {
+  padding: 12px;
+  border-radius: 8px;
+  background: #edf5ed;
+  margin-bottom: 15px;
+  font-size: 14px;
+}
+.bar {
+  height: 10px;
+  border-radius: 8px;
+  background: #e5ebe5;
+  overflow: hidden;
+}
+.bar span { display: block; height: 100%; background: var(--green); }
+footer { text-align: center; color: var(--muted); padding: 20px; }
+@media(max-width:600px) {
+  header h1 { font-size: 24px; }
+  th, td { padding: 8px 6px; }
+}
+</style>
 </head>
-
 <body>
-    <h1>Golf Performance Lab</h1>
-    <p>My personalized golf performance project.</p>
+<header>
+  <h1>⛳ Golf Performance Lab</h1>
+  <p>Understand your shots. Discover your patterns. Improve your game.</p>
+</header>
 
-    <button onclick="testWebsite()">Test Website</button>
+<nav>
+  <button class="active" data-page="dashboard">Dashboard</button>
+  <button data-page="add">Add Shots</button>
+  <button data-page="analysis">Shot Analysis</button>
+  <button data-page="profile">Golfer Profile</button>
+  <button data-page="research">About the Project</button>
+</nav>
 
-    <script>
-        function testWebsite() {
-            alert("The Golf Performance Lab is working!");
+<main>
+<section id="dashboard" class="page active">
+  <div class="card">
+    <h2>Welcome to your Golf Performance Lab</h2>
+    <p>Analyze your own launch-monitor data to learn what your most successful shots have in common.</p>
+    <button class="primary" onclick="showPage('add')">＋ Enter Your First Shot</button>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="muted">Shots Recorded</div><div class="stat" id="totalShots">0</div></div>
+    <div class="card"><div class="muted">Average Carry</div><div class="stat" id="avgCarry">—</div></div>
+    <div class="card"><div class="muted">Average Absolute Offline</div><div class="stat" id="avgOffline">—</div></div>
+    <div class="card"><div class="muted">Average Club Speed</div><div class="stat" id="avgSpeed">—</div></div>
+  </div>
+  <div class="card">
+    <h2>Recent Shots</h2>
+    <div id="recentShots" class="muted">Your recorded shots will appear here.</div>
+  </div>
+  <div class="card">
+    <h2>Your Data</h2>
+    <p class="muted">Your shots are saved in this browser on this device. They are not automatically shared across devices.</p>
+    <button class="secondary" onclick="exportCSV()">Export CSV</button>
+    <button class="secondary" onclick="document.getElementById('csvFile').click()">Import CSV</button>
+    <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" onchange="importCSV(event)">
+  </div>
+</section>
+
+<section id="add" class="page">
+  <div class="card">
+    <h2>Record a Shot</h2>
+    <p class="muted">Enter the values shown by your launch monitor. Leave unavailable measurements blank. Use the same units and sign conventions consistently.</p>
+    <form id="shotForm">
+      <div class="form-grid">
+        <div class="field"><label for="club">Club</label>
+          <select id="club"><option>Driver</option><option>3 Wood</option><option>5 Wood</option><option>Hybrid</option><option selected>7 Iron</option><option>8 Iron</option><option>9 Iron</option><option>Pitching Wedge</option><option>Other</option></select>
+        </div>
+        <div class="field"><label for="target">Target carry (yd)</label><input id="target" type="number" min="0" step="any" placeholder="e.g. 160"></div>
+        <div class="field"><label for="carry">Carry (yd) *</label><input id="carry" type="number" min="0" step="any" required></div>
+        <div class="field"><label for="offline">Offline (yd; left is negative)</label><input id="offline" type="number" step="any" placeholder="e.g. -4"></div>
+        <div class="field"><label for="clubSpeed">Club speed (mph)</label><input id="clubSpeed" type="number" min="0" step="any"></div>
+        <div class="field"><label for="ballSpeed">Ball speed (mph)</label><input id="ballSpeed" type="number" min="0" step="any"></div>
+        <div class="field"><label for="launch">Launch angle (°)</label><input id="launch" type="number" step="any"></div>
+        <div class="field"><label for="spin">Backspin (rpm)</label><input id="spin" type="number" min="0" step="any"></div>
+        <div class="field"><label for="attack">Attack angle (°)</label><input id="attack" type="number" step="any"></div>
+        <div class="field"><label for="path">Club path (°)</label><input id="path" type="number" step="any"></div>
+        <div class="field"><label for="face">Face angle (°)</label><input id="face" type="number" step="any"></div>
+        <div class="field"><label for="ftp">Face-to-path (°)</label><input id="ftp" type="number" step="any"></div>
+      </div>
+      <button class="primary" type="submit">Save Shot</button>
+    </form>
+    <p id="formMessage" class="muted" role="status"></p>
+  </div>
+</section>
+
+<section id="analysis" class="page">
+  <div class="card">
+    <h2>Shot Analysis</h2>
+    <div class="field" style="max-width:260px">
+      <label for="analysisClub">Analyze club</label>
+      <select id="analysisClub" onchange="render()"><option value="All">All clubs</option><option>Driver</option><option>3 Wood</option><option>5 Wood</option><option>Hybrid</option><option>7 Iron</option><option>8 Iron</option><option>9 Iron</option><option>Pitching Wedge</option><option>Other</option></select>
+    </div>
+    <div id="analysisContent"></div>
+  </div>
+</section>
+
+<section id="profile" class="page">
+  <div class="card">
+    <h2>Golfer Profile</h2>
+    <p class="muted">This profile is for organizing your own data, not comparing your swing with another golfer's.</p>
+    <div class="field"><label for="golferName">Display name (optional)</label><input id="golferName" maxlength="50" placeholder="e.g. Golfer 1"></div>
+    <div class="field"><label for="ballModel">Golf ball (optional)</label><input id="ballModel" maxlength="80" placeholder="Ball model"></div>
+    <div class="field"><label for="monitor">Launch monitor (optional)</label><input id="monitor" maxlength="80" placeholder="e.g. TrackMan"></div>
+    <button class="primary" onclick="saveProfile()">Save Profile</button>
+    <p id="profileMessage" class="muted" role="status"></p>
+  </div>
+  <div class="card">
+    <h2>Manage Data</h2>
+    <p>Export a backup before clearing any data. Clearing data cannot be undone.</p>
+    <button class="danger" onclick="clearShots()">Delete All Recorded Shots</button>
+  </div>
+</section>
+
+<section id="research" class="page">
+  <div class="card">
+    <h2>About This Project</h2>
+    <p>This project explores whether a golfer's own launch-monitor data can reveal patterns associated with accurate and consistent shots.</p>
+    <h3>Research question</h3>
+    <p>Can a golfer's personal launch-monitor data identify characteristics associated with their most successful shots?</p>
+    <h3>How success is measured</h3>
+    <p>When a target carry is entered, shots can be compared by their distance error and absolute offline. These are measures of outcome, not proof that a particular swing variable caused the result.</p>
+    <h3>Important limitations</h3>
+    <p>A small dataset may not represent future shots. Wind, lie, ball type, club, and other conditions can affect results. Analyze each club separately and collect shots under reasonably consistent conditions.</p>
+  </div>
+</section>
+</main>
+<footer>Golf Performance Lab · Personal data analysis</footer>
+
+<script>
+const STORAGE_KEY = "gpl_shots_v1";
+const PROFILE_KEY = "gpl_profile_v1";
+const fields = ["clubSpeed","ballSpeed","launch","spin","attack","path","face","ftp"];
+let shots = loadShots();
+let profile = loadProfile();
+
+function loadShots() {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    return Array.isArray(data) ? data : [];
+  } catch { return []; }
+}
+function loadProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}"); }
+  catch { return {}; }
+}
+function saveShots() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+    return true;
+  } catch {
+    alert("Could not save data in this browser. Export your data as a backup.");
+    return false;
+  }
+}
+function showPage(id) {
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === id));
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.page === id));
+  if (id === "profile") fillProfile();
+  render();
+}
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => showPage(b.dataset.page)));
+
+function numberFrom(id) {
+  const raw = document.getElementById(id).value.trim();
+  return raw === "" ? null : Number(raw);
+}
+function mean(items) {
+  const nums = items.filter(n => Number.isFinite(n));
+  return nums.length ? nums.reduce((a,b) => a+b,0) / nums.length : null;
+}
+function fmt(n, digits=1) {
+  return Number.isFinite(n) ? n.toFixed(digits) : "—";
+}
+function avgFor(items, key) { return mean(items.map(s => s[key])); }
+
+document.getElementById("shotForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const carry = numberFrom("carry");
+  const offline = numberFrom("offline");
+  if (!Number.isFinite(carry) || carry < 0) {
+    document.getElementById("formMessage").textContent = "Enter a valid carry distance.";
+    return;
+  }
+  const shot = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    date: new Date().toISOString(),
+    club: document.getElementById("club").value,
+    target: numberFrom("target"),
+    carry,
+    offline,
+    absoluteOffline: offline === null ? null : Math.abs(offline)
+  };
+  fields.forEach(f => {
+    const value = numberFrom(f);
+    shot[f] = value !== null && Number.isFinite(value) ? value : null;
+  });
+  shots.push(shot);
+  if (saveShots()) {
+    document.getElementById("shotForm").reset();
+    document.getElementById("club").value = "7 Iron";
+    document.getElementById("formMessage").textContent = "Shot saved!";
+    render();
+  }
+});
+
+function filteredShots() {
+  const club = document.getElementById("analysisClub").value;
+  return club === "All" ? shots : shots.filter(s => s.club === club);
+}
+function render() {
+  document.getElementById("totalShots").textContent = shots.length;
+  document.getElementById("avgCarry").textContent = fmt(avgFor(shots,"carry")) + (shots.length ? " yd" : "");
+  document.getElementById("avgOffline").textContent = fmt(avgFor(shots,"absoluteOffline")) + (shots.some(s => s.absoluteOffline !== null) ? " yd" : "");
+  document.getElementById("avgSpeed").textContent = fmt(avgFor(shots,"clubSpeed")) + (shots.some(s => s.clubSpeed !== null) ? " mph" : "");
+
+  const recent = shots.slice(-5).reverse();
+  document.getElementById("recentShots").innerHTML = recent.length
+    ? tableHTML(recent, false)
+    : "Your recorded shots will appear here.";
+
+  const items = filteredShots();
+  const content = document.getElementById("analysisContent");
+  if (!items.length) {
+    content.innerHTML = '<p class="muted">No shots recorded for this selection yet. Go to Add Shots to begin.</p>';
+    return;
+  }
+
+  const validOffline = items.filter(s => s.absoluteOffline !== null);
+  const validTargets = items.filter(s => s.target !== null && Number.isFinite(s.target));
+  const avgAbsError = mean(validTargets.map(s => Math.abs(s.carry - s.target)));
+  const targetShots = validTargets.filter(s => s.absoluteOffline !== null);
+  const ranked = targetShots.slice().sort((a,b) =>
+    (Math.abs(a.carry-a.target) + a.absoluteOffline) -
+    (Math.abs(b.carry-b.target) + b.absoluteOffline)
+  );
+  const best = ranked.slice(0, Math.max(1, Math.ceil(ranked.length * 0.2)));
+  const summary = `
+    <div class="grid">
+      ${statCard("Shots", items.length)}
+      ${statCard("Average carry", fmt(avgFor(items,"carry")) + " yd")}
+      ${statCard("Average absolute offline", fmt(avgFor(items,"absoluteOffline")) + " yd")}
+      ${statCard("Average club speed", fmt(avgFor(items,"clubSpeed")) + " mph")}
+      ${statCard("Average ball speed", fmt(avgFor(items,"ballSpeed")) + " mph")}
+      ${statCard("Average launch", fmt(avgFor(items,"launch")) + "°")}
+      ${statCard("Average spin", fmt(avgFor(items,"spin"),0) + " rpm")}
+      ${statCard("Average distance error", avgAbsError === null ? "—" : fmt(avgAbsError) + " yd")}
+    </div>
+  `;
+  let bestHTML = "";
+  if (best.length) {
+    bestHTML = `<div class="card"><h3>Your strongest target shots</h3>
+      <p class="muted">Ranked by combined absolute distance error + absolute offline. The best 20% are shown when target and offline data are available. This is a simple ranking, not a validated golf-performance model.</p>
+      ${tableHTML(best, true)}
+      <h3>What do these shots have in common?</h3>
+      <p class="muted">Compare these averages with all your shots. These are patterns in your data, not proof of cause and effect.</p>
+      ${fields.map(f => {
+        const all = avgFor(items,f), top = avgFor(best,f);
+        if (all === null || top === null) return "";
+        const labels = {clubSpeed:"Club speed",ballSpeed:"Ball speed",launch:"Launch angle",spin:"Spin",attack:"Attack angle",path:"Club path",face:"Face angle",ftp:"Face-to-path"};
+        return `<p><strong>${labels[f]}:</strong> All shots ${fmt(all)} · Strongest shots ${fmt(top)} · Difference ${fmt(top-all)}</p>`;
+      }).join("")}
+    </div>`;
+  } else {
+    bestHTML = '<div class="notice">To identify your strongest shots, enter both a target carry distance and an offline value for your shots.</div>';
+  }
+
+  content.innerHTML = summary + bestHTML +
+    `<div class="card"><h3>All recorded shots</h3>${tableHTML(items.slice().reverse(), true)}
+    <p><button class="danger" onclick="deleteSelected()">Delete selected club's shots</button></p></div>`;
+}
+function statCard(label,value) {
+  return `<div class="card"><div class="muted">label</div><divclass="stat">{value}</div></div>`;
+}
+function tableHTML(items, includeClub) {
+  const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;
+  const rows = items.map(s => `<tr>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
+    <td>fmt(s.carry)</td><td>{s.offline === null ? "—" : fmt(s.offline)}</td>
+    <td>${s.target === null ? "—" : fmt(s.target)}</td>
+    <td>${new Date(s.date).toLocaleDateString()}</td></tr>`).join("");
+  return `<div class="table-wrap"><table>header<tbody>{rows}</tbody></table></div>`;
+}
+function esc(v) {
+  return String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+function saveProfile() {
+  profile = {
+    name: document.getElementById("golferName").value.trim(),
+    ball: document.getElementById("ballModel").value.trim(),
+    monitor: document.getElementById("monitor").value.trim()
+  };
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  document.getElementById("profileMessage").textContent = "Profile saved in this browser.";
+}
+function fillProfile() {
+  document.getElementById("golferName").value = profile.name || "";
+  document.getElementById("ballModel").value = profile.ball || "";
+  document.getElementById("monitor").value = profile.monitor || "";
+}
+function deleteSelected() {
+  const club = document.getElementById("analysisClub").value;
+  if (!confirm(`Delete all ${club === "All" ? "recorded" : club} shots? Export a backup first if needed.`)) return;
+  shots = club === "All" ? [] : shots.filter(s => s.club !== club);
+  saveShots();
+  render();
+}
+function clearShots() {
+  if (!confirm("Delete every recorded shot? This cannot be undone.")) return;
+  shots = [];
+  saveShots();
+  render();
+}
+function csvCell(v) {
+  const s = v === null || v === undefined ? "" : String(v);
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+function exportCSV() {
+  const cols = ["date","club","target","carry","offline","absoluteOffline",...fields];
+  const lines = [cols.join(","), ...shots.map(s => cols.map(c => csvCell(s[c])).join(","))];
+  const blob = new Blob([lines.join("\r\n")], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "golf-performance-shots.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const lines = String(reader.result).trim().split(/\r?\n/);
+      const parseLine = line => {
+        const out=[]; let cell="", quoted=false;
+        for(let i=0;i<line.length;i++){
+          const c=line[i];
+          if(c === '"' && quoted && line[i+1] === '"'){cell+='"';i++;}
+          else if(c === '"') quoted=!quoted;
+          else if(c === ',' && !quoted){out.push(cell);cell="";}
+          else cell+=c;
         }
-    </script>
+        out.push(cell); return out;
+      };
+      const headers = parseLine(lines.shift()).map(h=>h.trim());
+      const imported = lines.filter(l=>l.trim()).map(line=>{
+        const vals=parseLine(line); const s={};
+        headers.forEach((h,i)=>{s[h]=vals[i] ?? "";});
+        const num = key => s[key] === "" || s[key] === undefined ? null : Number(s[key]);
+        const shot = {
+          id: String(Date.now())+Math.random(),
+          date: s.date && !Number.isNaN(Date.parse(s.date)) ? new Date(s.date).toISOString() : new Date().toISOString(),
+          club: s.club || "Other",
+          target: num("target"), carry: num("carry"), offline: num("offline"),
+          absoluteOffline: num("absoluteOffline")
+        };
+        fields.forEach(f=>shot[f]=num(f));
+        if (Number.isFinite(shot.carry) && shot.carry >= 0) {
+          if (shot.absoluteOffline === null && shot.offline !== null) shot.absoluteOffline=Math.abs(shot.offline);
+          return shot;
+        }
+        return null;
+      }).filter(Boolean);
+      shots = shots.concat(imported);
+      saveShots();
+      render();
+      alert(`Imported ${imported.length} shots.`);
+    } catch {
+      alert("Could not read that CSV. Try a CSV exported by this website.");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+}
+fillProfile();
+render();
+</script>
 </body>
 </html>
 

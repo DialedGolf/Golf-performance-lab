@@ -255,31 +255,8 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
 const STORAGE_KEY = "gpl_shots_v1";
 const PROFILE_KEY = "gpl_profile_v1";
 const fields = ["clubSpeed","ballSpeed","launch","spin","attack","path","face","ftp"];
-  const supabaseClient = window.supabase.createClient(
-const authHash = new URLSearchParams(
-  window.location.hash.substring(1)
-);
 
-// Show a useful message if Supabase returned an auth error.
-const authError = authHash.get("error_description");
-const authErrorCode = authHash.get("error_code");
-
-if (authError || authErrorCode) {
-  showAuthMessage(
-    "Email confirmation error: " +
-    (authError || authErrorCode).replace(/\+/g, " ")
-  );
-}
-
-// Report when Supabase detects the confirmation session.
-supabaseClient.auth.onAuthStateChange((event, session) => {
-  if (event === "SIGNED_IN" && session?.user) {
-    showAuthMessage(
-      "Your email confirmation/sign-in was successful."
-    );
-  }
-});
-
+const supabaseClient = window.supabase.createClient(
   "https://vsetwkivnegjenzodbeu.supabase.co",
   "sb_publishable_NoWuqCeQ3Pm9_4aK4Rgapw_4OYhoqq2"
 );
@@ -288,6 +265,18 @@ function showAuthMessage(message) {
   document.getElementById("authMessage").textContent = message;
 }
 
+// Supabase returns confirmation errors in the URL fragment.
+const authHash = new URLSearchParams(window.location.hash.substring(1));
+const authError = authHash.get("error_description") || authHash.get("error_code");
+if (authError) {
+  showAuthMessage("Email confirmation error: " + authError.replace(/\+/g, " "));
+}
+
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_IN" && session?.user) {
+    showAuthMessage("Signed in successfully as " + session.user.email);
+  }
+});
 
 async function signUp() {
   const email = document.getElementById("authEmail").value.trim();
@@ -297,21 +286,18 @@ async function signUp() {
     showAuthMessage("Enter your email and password first.");
     return;
   }
-
   if (password.length < 8) {
     showAuthMessage("Your password must be at least 8 characters.");
     return;
   }
 
   showAuthMessage("Creating your account...");
-
   try {
     const { data, error } = await supabaseClient.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo:
-          "https://dialedgolf.github.io/Golf-performance-lab/"
+        emailRedirectTo: "https://dialedgolf.github.io/Golf-performance-lab/"
       }
     });
 
@@ -321,47 +307,39 @@ async function signUp() {
       return;
     }
 
-    showAuthMessage(
-      data.session
-        ? "Account created and signed in!"
-        : "Request processed. Check your inbox and spam folder for a confirmation email. If the account already exists, try signing in."
-    );
+    showAuthMessage(data.session
+      ? "Account created and signed in!"
+      : "Sign-up request completed. Check your email and spam folder for a confirmation link. If this email already has an account, try Sign In.");
   } catch (err) {
-    showAuthMessage("Unexpected error: " + err.message);
+    showAuthMessage("Unexpected sign-up error: " + (err?.message || String(err)));
     console.error("Unexpected sign-up error:", err);
   }
-}
-
-  const email = document.getElementById("authEmail").value.trim();
-  const password = document.getElementById("authPassword").value;
-
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: window.location.origin +
-        window.location.pathname
-    }
-  });
-
-  showAuthMessage(error ? error.message :
-    "Account request submitted. Check your email if confirmation is required.");
 }
 
 async function signIn() {
   const email = document.getElementById("authEmail").value.trim();
   const password = document.getElementById("authPassword").value;
-
-  const { data, error } =
-    await supabaseClient.auth.signInWithPassword({ email, password });
-
-  showAuthMessage(error ? error.message :
-    "Signed in successfully as " + data.user.email);
+  showAuthMessage("Signing in...");
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      showAuthMessage("Sign-in error: " + error.message);
+      return;
+    }
+    showAuthMessage("Signed in successfully as " + data.user.email);
+  } catch (err) {
+    showAuthMessage("Unexpected sign-in error: " + (err?.message || String(err)));
+    console.error("Unexpected sign-in error:", err);
+  }
 }
 
 async function signOut() {
-  const { error } = await supabaseClient.auth.signOut();
-  showAuthMessage(error ? error.message : "Signed out.");
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    showAuthMessage(error ? error.message : "Signed out.");
+  } catch (err) {
+    showAuthMessage("Sign-out error: " + (err?.message || String(err)));
+  }
 }
 let shots = loadShots();
 let profile = loadProfile();

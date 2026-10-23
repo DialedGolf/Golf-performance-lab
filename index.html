@@ -288,7 +288,50 @@ function showAuthMessage(message) {
   document.getElementById("authMessage").textContent = message;
 }
 
+
 async function signUp() {
+  const email = document.getElementById("authEmail").value.trim();
+  const password = document.getElementById("authPassword").value;
+
+  if (!email || !password) {
+    showAuthMessage("Enter your email and password first.");
+    return;
+  }
+
+  if (password.length < 8) {
+    showAuthMessage("Your password must be at least 8 characters.");
+    return;
+  }
+
+  showAuthMessage("Creating your account...");
+
+  try {
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo:
+          "https://dialedgolf.github.io/Golf-performance-lab/"
+      }
+    });
+
+    if (error) {
+      showAuthMessage("Sign-up error: " + error.message);
+      console.error("Supabase sign-up error:", error);
+      return;
+    }
+
+    showAuthMessage(
+      data.session
+        ? "Account created and signed in!"
+        : "Request processed. Check your inbox and spam folder for a confirmation email. If the account already exists, try signing in."
+    );
+  } catch (err) {
+    showAuthMessage("Unexpected error: " + err.message);
+    console.error("Unexpected sign-up error:", err);
+  }
+}
+
   const email = document.getElementById("authEmail").value.trim();
   const password = document.getElementById("authPassword").value;
 

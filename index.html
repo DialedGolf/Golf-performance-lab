@@ -256,6 +256,30 @@ const STORAGE_KEY = "gpl_shots_v1";
 const PROFILE_KEY = "gpl_profile_v1";
 const fields = ["clubSpeed","ballSpeed","launch","spin","attack","path","face","ftp"];
   const supabaseClient = window.supabase.createClient(
+const authHash = new URLSearchParams(
+  window.location.hash.substring(1)
+);
+
+// Show a useful message if Supabase returned an auth error.
+const authError = authHash.get("error_description");
+const authErrorCode = authHash.get("error_code");
+
+if (authError || authErrorCode) {
+  showAuthMessage(
+    "Email confirmation error: " +
+    (authError || authErrorCode).replace(/\+/g, " ")
+  );
+}
+
+// Report when Supabase detects the confirmation session.
+supabaseClient.auth.onAuthStateChange((event, session) => {
+  if (event === "SIGNED_IN" && session?.user) {
+    showAuthMessage(
+      "Your email confirmation/sign-in was successful."
+    );
+  }
+});
+
   "https://vsetwkivnegjenzodbeu.supabase.co",
   "sb_publishable_NoWuqCeQ3Pm9_4aK4Rgapw_4OYhoqq2"
 );

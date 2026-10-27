@@ -204,6 +204,7 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
 </section>
 
 <section id="profile" class="page">
+  <div id="accountCardPlaceholder" hidden></div>
   <div id="accountCard" class="card">
     <h2>Golfer Account</h2>
     <div id="signedOutControls">
@@ -279,10 +280,23 @@ if (authError) {
 
 function updateAccountUI(session) {
   const signedIn = Boolean(session?.user);
+  const accountCard = document.getElementById("accountCard");
+  const profileSection = document.getElementById("profile");
+  const placeholder = document.getElementById("accountCardPlaceholder");
+  const main = document.querySelector("main");
+
   document.getElementById("signedOutControls").hidden = signedIn;
   document.getElementById("signedInControls").hidden = !signedIn;
   document.getElementById("signedInMessage").textContent =
     signedIn ? "Signed in as " + session.user.email : "";
+
+  if (signedIn) {
+    // Signed-in users see the account card only while Golfer Profile is open.
+    profileSection.insertBefore(accountCard, placeholder.nextSibling);
+  } else {
+    // Signed-out users can access the account card from every page.
+    main.insertBefore(accountCard, main.firstElementChild);
+  }
 }
 
 supabaseClient.auth.onAuthStateChange((event, session) => {

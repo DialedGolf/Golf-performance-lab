@@ -595,48 +595,123 @@ function exportCSV() {
 function importCSV(event) {
   const file = event.target.files[0];
   if (!file) return;
+
+  // Always ask the golfer to confirm the club instead of trusting GSPro's club label.
+  const clubOptions = ["Driver", "3 Wood", "5 Wood", "Hybrid", "7 Iron", "8 Iron", "9 Iron", "Pitching Wedge", "Other"];
+  const clubPrompt = "Which club did you hit for ALL shots in this CSV?\n\n" +
+    clubOptions.map((club, i) => (i + 1) + ". " + club).join("\n") +
+    "\n\nEnter the number for your club. This choice will override the club in the CSV.";
+  const clubChoice = prompt(clubPrompt, "5");
+  if (clubChoice === null) {
+    event.target.value = "";
+    return;
+  }
+  const chosenClub = clubOptions[Number(clubChoice) - 1];
+  if (!chosenClub) {
+    alert("Import cancelled: enter a number from 1 to " + clubOptions.length + ".");
+    event.target.value = "";
+    return;
+  }
+
   const reader = new FileReader();
   reader.onload = () => {
     try {
-      const lines = String(reader.result).trim().split(/\r?\n/);
+      const text = String(reader.result || "").replace(/^\\uFEFF/, "").trim();
+      if (!text) throw new Error("The file is empty.");
+      const lines = text.split(/\\r?\\n/);
       const parseLine = line => {
-        const out=[]; let cell="", quoted=false;
-        for(let i=0;i<line.length;i++){
-          const c=line[i];
-          if(c === '"' && quoted && line[i+1] === '"'){cell+='"';i++;}
-          else if(c === '"') quoted=!quoted;
-          else if(c === ',' && !quoted){out.push(cell);cell="";}
-          else cell+=c;
+        const out = [];
+        let cell = "", quoted = false;
+        for (let i = 0; i < line.length; i++) {
+          const c = line[i];
+          if (c === '"' && quoted && line[i + 1] === '"') { cell += '"'; i++; }
+          else if (c === '"') quoted = !quoted;
+          else if (c === "," && !quoted) { out.push(cell); cell = ""; }
+          else cell += c;
         }
-        out.push(cell); return out;
+        out.push(cell);
+        return out;
       };
-      const headers = parseLine(lines.shift()).map(h=>h.trim());
-      const imported = lines.filter(l=>l.trim()).map(line=>{
-        const vals=parseLine(line); const s={};
-        headers.forEach((h,i)=>{s[h]=vals[i] ?? "";});
-        const num = key => s[key] === "" || s[key] === undefined ? null : Number(s[key]);
-        const shot = {
-          id: String(Date.now())+Math.random(),
-          date: s.date && !Number.isNaN(Date.parse(s.date)) ? new Date(s.date).toISOString() : new Date().toISOString(),
-          club: s.club || "Other",
-          target: num("target"), carry: num("carry"), offline: num("offline"),
-          absoluteOffline: num("absoluteOffline")
+      const headers = parseLine(lines.shift()).map(h => h.trim());
+      const normalized = headers.map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ""));
+      const aliases = {
+        carry: ["carry", "carrydistance", "carryyd", "carryyards"],
+        offline: ["offline", "offlinedistance", "offlineyd", "offlineyards"],
+        clubSpeed: ["clubspeed", "clubspeedmph", "clubheadspeed"],
+        ballSpeed: ["ballspeed", "ballspeedmph"],
+        launch: ["launch", "launchangle", "vla", "verticallaunchangle"],
+        spin: ["spin", "backspin", "backspinrpm", "totalspin"],
+        attack: ["attack", "attackangle", "aoa", "angleofattack"],
+        path: ["path", "clubpath", "clubpathangle"],
+        face: ["face", "faceangle", "facetotarget", "faceto target"],
+        ftp: ["ftp", "facetopath", "facepathtarget", "facetopth"]
+      };
+      const findColumn = key => {
+        const match = normalized.findIndex(h => aliases[key].includes(h));
+        return match < 0 ? null : match;
+      };
+      const columns = {};
+      Object.keys(aliases).forEach(key => columns[key] = findColumn(key));
+      if (columns.carry === null) {
+        throw new Error("I couldn't find a Carry column. Make sure the CSV includes Carry or Carry Distance.");
+      }
+
+      const imported = [];
+      let skipped = 0;
+      lines.filter(line => line.trim()).forEach(line => {
+        const vals = parseLine(line);
+        const readNumber = key => {
+          const index = columns[key];
+          if (index === null || vals[index] === undefined || vals[index].trim() === "") return null;
+          const cleaned = vals[index].replace(/,/g, "").replace(/\\s*(yds?|yards?|mph|rpm|degrees?)\\s*$/i, "").trim();
+          const value = Number(cleaned);
+          return Number.isFinite(value) ? value : null;
         };
-        fields.forEach(f=>shot[f]=num(f));
-        if (Number.isFinite(shot.carry) && shot.carry >= 0) {
-          if (shot.absoluteOffline === null && shot.offline !== null) shot.absoluteOffline=Math.abs(shot.offline);
-          return shot;
-        }
-        return null;
-      }).filter(Boolean);
+        const carry = readNumber("carry");
+        if (carry === null || carry < 0) { skipped++; return; }
+        const offline = readNumber("offline");
+        const shot = {
+          id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+          date: new Date().toISOString(),
+          club: chosenClub,
+          target: null,
+          carry,
+          offline,
+          absoluteOffline: offline === null ? null : Math.abs(offline)
+        };
+        fields.forEach(key => shot[key] = readNumber(key));
+        imported.push(shot);
+      });
+
+      if (!imported.length) {
+        throw new Error("No valid shots with a carry distance were found. Check the CSV columns and values.");
+      }
+      const mappingSummary = Object.keys(aliases)
+        .filter(key => columns[key] !== null)
+        .map(key => headers[columns[key]] + " → " + ({
+          carry: "Carry", offline: "Offline", clubSpeed: "Club speed", ballSpeed: "Ball speed",
+          launch: "Launch angle", spin: "Backspin", attack: "Attack angle", path: "Club path",
+          face: "Face angle", ftp: "Face-to-path"
+        })[key]);
+      const confirmImport = confirm(
+        "Import " + imported.length + " shot(s) as " + chosenClub + "?\\n\\n" +
+        "Recognized fields:\\n" + mappingSummary.join("\\n") +
+        (skipped ? "\\n\\nRows skipped because carry was missing or invalid: " + skipped : "") +
+        "\\n\\nThe club you selected will be used for every imported shot."
+      );
+      if (!confirmImport) return;
+
       shots = shots.concat(imported);
-      saveShots();
-      render();
-      alert(`Imported ${imported.length} shots.`);
-    } catch {
-      alert("Could not read that CSV. Try a CSV exported by this website.");
+      if (saveShots()) {
+        render();
+        alert("Successfully imported " + imported.length + " shot(s) as " + chosenClub + "." +
+          (skipped ? " Skipped " + skipped + " invalid row(s)." : ""));
+      }
+    } catch (err) {
+      alert("Could not import this CSV: " + (err?.message || "Check the file format."));
+    } finally {
+      event.target.value = "";
     }
-    event.target.value = "";
   };
   reader.readAsText(file);
 }

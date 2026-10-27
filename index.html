@@ -601,7 +601,7 @@ function importCSV(event) {
   const clubPrompt = "Which club did you hit for ALL shots in this CSV?\n\n" +
     clubOptions.map((club, i) => (i + 1) + ". " + club).join("\n") +
     "\n\nEnter the number for your club. This choice will override the club in the CSV.";
-  const clubChoice = prompt(clubPrompt, "5");
+  const clubChoice = prompt(clubPrompt, "6");
   if (clubChoice === null) {
     event.target.value = "";
     return;

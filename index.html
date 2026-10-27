@@ -139,23 +139,7 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
 </nav>
 
 <main>
-  <section class="card">
-  <h2>Golfer Account</h2>
-  <div class="field">
-    <label for="authEmail">Email</label>
-    <input id="authEmail" type="email" autocomplete="email"
-           placeholder="you@example.com">
-  </div>
-  <div class="field">
-    <label for="authPassword">Password</label>
-    <input id="authPassword" type="password"
-           autocomplete="current-password" minlength="8">
-  </div>
-  <button class="primary" onclick="signUp()">Create Account</button>
-  <button class="secondary" onclick="signIn()">Sign In</button>
-  <button class="secondary" onclick="signOut()">Sign Out</button>
-  <p id="authMessage" role="status"></p>
-</section>
+
 <section id="dashboard" class="page active">
   <div class="card">
     <h2>Welcome to your Golf Performance Lab</h2>
@@ -220,6 +204,27 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
 </section>
 
 <section id="profile" class="page">
+  <div id="accountCard" class="card">
+    <h2>Golfer Account</h2>
+    <div id="signedOutControls">
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="field">
+        <label for="authPassword">Password</label>
+        <input id="authPassword" type="password" autocomplete="current-password" minlength="8">
+      </div>
+      <button class="primary" onclick="signUp()">Create Account</button>
+      <button class="secondary" onclick="signIn()">Sign In</button>
+    </div>
+    <div id="signedInControls" hidden>
+      <p id="signedInMessage" class="muted">You are signed in.</p>
+      <button class="secondary" onclick="signOut()">Sign Out</button>
+    </div>
+    <p id="authMessage" role="status"></p>
+  </div>
+
   <div class="card">
     <h2>Golfer Profile</h2>
     <p class="muted">This profile is for organizing your own data, not comparing your swing with another golfer's.</p>
@@ -272,10 +277,28 @@ if (authError) {
   showAuthMessage("Email confirmation error: " + authError.replace(/\+/g, " "));
 }
 
+function updateAccountUI(session) {
+  const signedIn = Boolean(session?.user);
+  document.getElementById("signedOutControls").hidden = signedIn;
+  document.getElementById("signedInControls").hidden = !signedIn;
+  document.getElementById("signedInMessage").textContent =
+    signedIn ? "Signed in as " + session.user.email : "";
+}
+
 supabaseClient.auth.onAuthStateChange((event, session) => {
+  updateAccountUI(session);
   if (event === "SIGNED_IN" && session?.user) {
     showAuthMessage("Signed in successfully as " + session.user.email);
   }
+});
+
+// Restore the account controls correctly after a page refresh.
+supabaseClient.auth.getSession().then(({ data, error }) => {
+  if (error) {
+    showAuthMessage("Could not check sign-in status: " + error.message);
+    return;
+  }
+  updateAccountUI(data.session);
 });
 
 async function signUp() {
@@ -336,7 +359,12 @@ async function signIn() {
 async function signOut() {
   try {
     const { error } = await supabaseClient.auth.signOut();
-    showAuthMessage(error ? error.message : "Signed out.");
+    if (error) {
+      showAuthMessage("Sign-out error: " + error.message);
+      return;
+    }
+    updateAccountUI(null);
+    showAuthMessage("Signed out.");
   } catch (err) {
     showAuthMessage("Sign-out error: " + (err?.message || String(err)));
   }

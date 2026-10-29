@@ -543,7 +543,10 @@ async function loadCloudData(userId) {
       if (currentUserId !== userId) return;
 
       const storedOwner = localStorage.getItem(OWNER_KEY);
-      const canMigrateLocal = !storedOwner || storedOwner === userId;
+      // Only migrate legacy browser-only data when this browser has never been linked
+      // to an account. Once linked, Supabase is authoritative so deleted shots cannot
+      // be resurrected from an outdated local cache on another device.
+      const canMigrateLocal = !storedOwner;
       const localShots = canMigrateLocal ? loadShots() : [];
       const remoteShots = (shotResult.data || []).map(rowToShot);
       const merged = new Map(remoteShots.map(s => [s.id, s]));

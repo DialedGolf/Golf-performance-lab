@@ -518,12 +518,10 @@ function render() {
     bestHTML = '<div class="notice">To identify your strongest shots, enter both a target carry distance and an offline value for your shots.</div>';
   }
 
-  const selectedShot = items.find(s => s.id === selectedShotId);
   content.innerHTML = summary + bestHTML +
     `<div class="card"><h3>All recorded shots</h3>
-    <p class="muted">Click any shot row to see all available metrics for that shot.</p>
+    <p class="muted">Hover over a shot to highlight it, then click it to expand its metrics directly underneath.</p>
     ${tableHTML(items.slice().reverse(), true)}
-    <div id="selectedShotDetails">${selectedShot ? shotDetailsHTML(selectedShot) : '<p class="muted">Select a shot above to view its metrics here.</p>'}</div>
     <p><button class="danger" onclick="deleteSelected()">Delete selected club's shots</button></p></div>`;
 }
 
@@ -544,10 +542,8 @@ function shotDetailsHTML(s) {
 }
 
 function selectShot(id) {
-  selectedShotId = id;
-  const shot = shots.find(s => s.id === id);
-  const details = document.getElementById("selectedShotDetails");
-  if (shot && details) details.innerHTML = shotDetailsHTML(shot);
+  selectedShotId = selectedShotId === id ? null : id;
+  render();
 }
 
 function statCard(label, value) {
@@ -569,10 +565,16 @@ function statCard(label, value) {
 }
 function tableHTML(items, includeClub) {
   const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;
-  const rows = items.map(s => `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
-    <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
-    <td>${s.target === null ? "—" : fmt(s.target)}</td>
-    <td>${new Date(s.date).toLocaleDateString()}</td></tr>`).join("");
+  const rows = items.map(s => {
+    const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
+      <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
+      <td>${s.target === null ? "—" : fmt(s.target)}</td>
+      <td>${new Date(s.date).toLocaleDateString()}</td></tr>`;
+    const detail = includeClub && selectedShotId === s.id
+      ? `<tr class="shot-detail-row"><td colspan="5">${shotDetailsHTML(s)}</td></tr>`
+      : "";
+    return row + detail;
+  }).join("");
   return `<div class="table-wrap"><table>${header}<tbody>${rows}</tbody></table></div>`;
 }
 function esc(v) {

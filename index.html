@@ -383,6 +383,7 @@ async function signOut() {
     showAuthMessage("Sign-out error: " + (err?.message || String(err)));
   }
 }
+let selectedShotId = null;
 let shots = loadShots();
 let profile = loadProfile();
 
@@ -517,9 +518,36 @@ function render() {
     bestHTML = '<div class="notice">To identify your strongest shots, enter both a target carry distance and an offline value for your shots.</div>';
   }
 
+  const selectedShot = items.find(s => s.id === selectedShotId);
   content.innerHTML = summary + bestHTML +
-    `<div class="card"><h3>All recorded shots</h3>${tableHTML(items.slice().reverse(), true)}
+    `<div class="card"><h3>All recorded shots</h3>
+    <p class="muted">Click any shot row to see all available metrics for that shot.</p>
+    ${tableHTML(items.slice().reverse(), true)}
+    <div id="selectedShotDetails">${selectedShot ? shotDetailsHTML(selectedShot) : '<p class="muted">Select a shot above to view its metrics here.</p>'}</div>
     <p><button class="danger" onclick="deleteSelected()">Delete selected club's shots</button></p></div>`;
+}
+
+function shotDetailsHTML(s) {
+  const metrics = [
+    ["Club", s.club], ["Carry", s.carry, " yd"], ["Offline", s.offline, " yd"],
+    ["Absolute offline", s.absoluteOffline, " yd"], ["Target carry", s.target, " yd"],
+    ["Club speed", s.clubSpeed, " mph"], ["Ball speed", s.ballSpeed, " mph"],
+    ["Launch angle", s.launch, "°"], ["Spin", s.spin, " rpm"],
+    ["Attack angle", s.attack, "°"], ["Club path", s.path, "°"],
+    ["Face angle", s.face, "°"], ["Face to path", s.ftp, "°"],
+    ["Date recorded", s.date ? new Date(s.date).toLocaleString() : null]
+  ];
+  return `<div class="notice" style="margin-top:16px"><h3 style="margin-top:0">Selected shot details</h3>
+    <div class="grid">${metrics.map(([label, value, unit=""]) =>
+      `<div><div class="muted">${esc(label)}</div><strong>${value === null || value === undefined || value === "" || (typeof value === "number" && !Number.isFinite(value)) ? "—" : esc(typeof value === "number" ? fmt(value) + unit : value)}</strong></div>`
+    ).join("")}</div></div>`;
+}
+
+function selectShot(id) {
+  selectedShotId = id;
+  const shot = shots.find(s => s.id === id);
+  const details = document.getElementById("selectedShotDetails");
+  if (shot && details) details.innerHTML = shotDetailsHTML(shot);
 }
 
 function statCard(label, value) {
@@ -541,7 +569,7 @@ function statCard(label, value) {
 }
 function tableHTML(items, includeClub) {
   const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;
-  const rows = items.map(s => `<tr>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
+  const rows = items.map(s => `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
     <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
     <td>${s.target === null ? "—" : fmt(s.target)}</td>
     <td>${new Date(s.date).toLocaleDateString()}</td></tr>`).join("");

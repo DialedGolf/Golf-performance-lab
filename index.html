@@ -99,6 +99,12 @@ button:hover { filter: brightness(.96); }
 .shot-row td:first-child { position: relative; }
 .shot-row td:first-child::after { content: " · Click to view"; color: var(--green); font-size: 12px; opacity: 0; }
 .shot-row:hover td:first-child::after, .shot-row:focus td:first-child::after { opacity: 1; }
+.shot-date-cell { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.delete-shot-button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 6px; padding: 5px 7px; background: #fbe9e7; color: #b42318; cursor: pointer; font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .12s ease; }
+tr:hover .delete-shot-button, tr:focus-within .delete-shot-button { opacity: 1; pointer-events: auto; }
+.delete-shot-button:focus { opacity: 1; pointer-events: auto; outline: 2px solid #b42318; outline-offset: 2px; }
+.delete-shot-button:hover { background: #f7d6d2; }
+@media (hover: none) { .delete-shot-button { opacity: 1; pointer-events: auto; } }
 .shot-detail-row td { white-space: normal; background: #f7faf7; padding: 14px; }
 .shot-detail-row .notice { margin: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -783,7 +789,7 @@ function tableHTML(items, includeClub) {
     const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}') "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
       <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
       <td>${s.target === null ? "—" : fmt(s.target)}</td>
-      <td>${new Date(s.date).toLocaleDateString()}</td></tr>`;
+      <td><div class="shot-date-cell"><span>${new Date(s.date).toLocaleDateString()}</span><button type="button" class="delete-shot-button" aria-label="Delete shot from ${esc(new Date(s.date).toLocaleDateString())}" title="Delete shot" onclick="deleteShot('${esc(s.id)}', event)"><span aria-hidden="true">🗑</span><span>Delete shot</span></button></div></td></tr>`;
     const detail = includeClub && selectedShotId === s.id
       ? `<tr class="shot-detail-row"><td colspan="5">${shotDetailsHTML(s)}</td></tr>`
       : "";
@@ -828,6 +834,20 @@ function fillProfile() {
   document.getElementById("ballModel").value = profile.ball || "";
   document.getElementById("monitor").value = profile.monitor || "";
 }
+function deleteShot(id, event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  const shot = shots.find(s => String(s.id) === String(id));
+  if (!shot) return;
+  if (!confirm(`Delete this ${shot.club || ""} shot recorded on ${shot.date ? new Date(shot.date).toLocaleString() : "unknown date"}? This cannot be undone.`)) return;
+  shots = shots.filter(s => String(s.id) !== String(id));
+  if (selectedShotId === id) selectedShotId = null;
+  saveShots();
+  render();
+}
+
 function deleteSelected() {
   const club = document.getElementById("analysisClub").value;
   if (!confirm(`Delete all ${club === "All" ? "recorded" : club} shots? Export a backup first if needed.`)) return;

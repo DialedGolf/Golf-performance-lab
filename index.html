@@ -306,10 +306,22 @@ function updateAccountUI(session) {
   }
 }
 
+let currentUserId = null;
+let cloudReady = false;
+let cloudLoadInProgress = null;
+let cloudShotSync = Promise.resolve();
+const OWNER_KEY = "gpl_cloud_owner_v1";
+
 supabaseClient.auth.onAuthStateChange((event, session) => {
   updateAccountUI(session);
-  if (event === "SIGNED_IN" && session?.user) {
-    showAuthMessage("Signed in successfully as " + session.user.email);
+  if (session?.user) {
+    currentUserId = session.user.id;
+    if (event === "SIGNED_IN") showAuthMessage("Signed in successfully as " + session.user.email);
+    // Run after this auth callback returns to avoid holding Supabase's auth lock.
+    Promise.resolve().then(() => loadCloudData(session.user.id));
+  } else {
+    currentUserId = null;
+    cloudReady = false;
   }
 });
 
@@ -320,6 +332,10 @@ supabaseClient.auth.getSession().then(({ data, error }) => {
     return;
   }
   updateAccountUI(data.session);
+  if (data.session?.user) {
+    currentUserId = data.session.user.id;
+    loadCloudData(data.session.user.id);
+  }
 });
 
 async function signUp() {
@@ -407,11 +423,131 @@ function loadProfile() {
 function saveShots() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+    if (cloudReady && currentUserId) queueCloudShotSync();
     return true;
   } catch {
     alert("Could not save data in this browser. Export your data as a backup.");
     return false;
   }
+}
+
+function makeUuid() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0;
+    return (c === "x" ? r : (r & 3 | 8)).toString(16);
+  });
+}
+
+function shotToRow(s, userId) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s.id))) s.id = makeUuid();
+  return {
+    id: s.id, user_id: userId, shot_date: s.date || new Date().toISOString(),
+    club: s.club || "7 Iron", target: s.target ?? null, carry: s.carry,
+    offline: s.offline ?? null, absolute_offline: s.absoluteOffline ?? null,
+    club_speed: s.clubSpeed ?? null, ball_speed: s.ballSpeed ?? null,
+    launch: s.launch ?? null, spin: s.spin ?? null, attack: s.attack ?? null,
+    path: s.path ?? null, face: s.face ?? null, face_to_path: s.ftp ?? null
+  };
+}
+
+function rowToShot(row) {
+  return {
+    id: row.id, date: row.shot_date, club: row.club, target: row.target === null ? null : Number(row.target),
+    carry: Number(row.carry), offline: row.offline === null ? null : Number(row.offline),
+    absoluteOffline: row.absolute_offline === null ? null : Number(row.absolute_offline),
+    clubSpeed: row.club_speed === null ? null : Number(row.club_speed),
+    ballSpeed: row.ball_speed === null ? null : Number(row.ball_speed),
+    launch: row.launch === null ? null : Number(row.launch), spin: row.spin === null ? null : Number(row.spin),
+    attack: row.attack === null ? null : Number(row.attack), path: row.path === null ? null : Number(row.path),
+    face: row.face === null ? null : Number(row.face), ftp: row.face_to_path === null ? null : Number(row.face_to_path)
+  };
+}
+
+async function loadCloudData(userId) {
+  if (!userId) return;
+  if (cloudLoadInProgress && cloudLoadInProgress.userId === userId) return cloudLoadInProgress.promise;
+  cloudReady = false;
+  const promise = (async () => {
+    try {
+      const [shotResult, profileResult] = await Promise.all([
+        supabaseClient.from("shots").select("*").eq("user_id", userId).order("shot_date", { ascending: true }),
+        supabaseClient.from("profiles").select("*").eq("id", userId).maybeSingle()
+      ]);
+      if (shotResult.error) throw shotResult.error;
+      if (profileResult.error) throw profileResult.error;
+      if (currentUserId !== userId) return;
+
+      const storedOwner = localStorage.getItem(OWNER_KEY);
+      const canMigrateLocal = !storedOwner || storedOwner === userId;
+      const localShots = canMigrateLocal ? loadShots() : [];
+      const remoteShots = (shotResult.data || []).map(rowToShot);
+      const merged = new Map(remoteShots.map(s => [s.id, s]));
+      localShots.forEach(s => {
+        if (!merged.has(s.id)) merged.set(s.id, s);
+      });
+      shots = Array.from(merged.values()).sort((a,b) => new Date(a.date) - new Date(b.date));
+
+      if (profileResult.data) {
+        profile = {
+          name: profileResult.data.display_name || "",
+          ball: profileResult.data.ball_model || "",
+          monitor: profileResult.data.launch_monitor || ""
+        };
+      } else if (canMigrateLocal) {
+        profile = loadProfile();
+      } else {
+        profile = {};
+      }
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+      localStorage.setItem(OWNER_KEY, userId);
+      cloudReady = true;
+      fillProfile();
+      render();
+
+      // This also migrates legacy browser-only shots and profile details to the account.
+      await syncShotsToCloud();
+      if (!profileResult.data && (profile.name || profile.ball || profile.monitor)) await saveProfileToCloud();
+      showAuthMessage("Your shots and golfer profile are synced to your account.");
+    } catch (err) {
+      cloudReady = false;
+      showAuthMessage("Signed in, but could not load cloud data: " + (err?.message || String(err)));
+      console.error("Cloud data load failed:", err);
+    } finally {
+      if (cloudLoadInProgress?.userId === userId) cloudLoadInProgress = null;
+    }
+  })();
+  cloudLoadInProgress = { userId, promise };
+  return promise;
+}
+
+async function syncShotsToCloud() {
+  if (!currentUserId || !cloudReady) return;
+  const userId = currentUserId;
+  const snapshot = shots.map(s => ({ ...s }));
+  const rows = snapshot.map(s => shotToRow(s, userId));
+  const validIds = rows.map(row => row.id);
+  if (rows.length) {
+    const { error } = await supabaseClient.from("shots").upsert(rows, { onConflict: "id" });
+    if (error) throw error;
+  }
+  const { data: existing, error: listError } = await supabaseClient.from("shots").select("id").eq("user_id", userId);
+  if (listError) throw listError;
+  const staleIds = (existing || []).map(r => r.id).filter(id => !validIds.includes(id));
+  for (const id of staleIds) {
+    const { error } = await supabaseClient.from("shots").delete().eq("id", id).eq("user_id", userId);
+    if (error) throw error;
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+}
+
+function queueCloudShotSync() {
+  cloudShotSync = cloudShotSync.then(() => syncShotsToCloud()).catch(err => {
+    showAuthMessage("Shot saved in this browser, but cloud sync failed: " + (err?.message || String(err)));
+    console.error("Shot sync failed:", err);
+  });
 }
 function showPage(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === id));
@@ -594,7 +730,27 @@ function saveProfile() {
     monitor: document.getElementById("monitor").value.trim()
   };
   localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
-  document.getElementById("profileMessage").textContent = "Profile saved in this browser.";
+  if (cloudReady && currentUserId) {
+    saveProfileToCloud().then(() => {
+      document.getElementById("profileMessage").textContent = "Profile saved to your account and this browser.";
+    }).catch(err => {
+      document.getElementById("profileMessage").textContent = "Saved in this browser, but cloud save failed: " + (err?.message || String(err));
+    });
+  } else {
+    document.getElementById("profileMessage").textContent = "Profile saved in this browser. Sign in to sync it across devices.";
+  }
+}
+
+async function saveProfileToCloud() {
+  if (!currentUserId) return;
+  const { error } = await supabaseClient.from("profiles").upsert({
+    id: currentUserId,
+    display_name: profile.name || "",
+    ball_model: profile.ball || "",
+    launch_monitor: profile.monitor || "",
+    updated_at: new Date().toISOString()
+  }, { onConflict: "id" });
+  if (error) throw error;
 }
 function fillProfile() {
   document.getElementById("golferName").value = profile.name || "";

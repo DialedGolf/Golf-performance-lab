@@ -310,6 +310,9 @@ let currentUserId = null;
 let cloudReady = false;
 let cloudLoadInProgress = null;
 let cloudShotSync = Promise.resolve();
+let shotRealtimeChannel = null;
+let shotRealtimeUserId = null;
+let cloudRefreshInProgress = false;
 const OWNER_KEY = "gpl_cloud_owner_v1";
 
 supabaseClient.auth.onAuthStateChange((event, session) => {
@@ -322,6 +325,9 @@ supabaseClient.auth.onAuthStateChange((event, session) => {
   } else {
     currentUserId = null;
     cloudReady = false;
+    if (shotRealtimeChannel) supabaseClient.removeChannel(shotRealtimeChannel);
+    shotRealtimeChannel = null;
+    shotRealtimeUserId = null;
   }
 });
 
@@ -464,6 +470,64 @@ function rowToShot(row) {
   };
 }
 
+async function refreshShotsFromCloud(userId) {
+  if (!userId || currentUserId !== userId || !cloudReady || cloudRefreshInProgress) return;
+  cloudRefreshInProgress = true;
+  try {
+    const { data, error } = await supabaseClient
+      .from("shots")
+      .select("*")
+      .eq("user_id", userId)
+      .order("shot_date", { ascending: true });
+    if (error) throw error;
+    if (currentUserId !== userId) return;
+
+    // Cloud is authoritative during refresh: do not merge stale browser data back in.
+    shots = (data || []).map(rowToShot);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(shots));
+    localStorage.setItem(OWNER_KEY, userId);
+    render();
+  } catch (err) {
+    console.error("Could not refresh shots from cloud:", err);
+  } finally {
+    cloudRefreshInProgress = false;
+  }
+}
+
+function setupShotRealtime(userId) {
+  if (!userId || currentUserId !== userId) return;
+  if (shotRealtimeChannel && shotRealtimeUserId === userId) return;
+  if (shotRealtimeChannel) supabaseClient.removeChannel(shotRealtimeChannel);
+
+  shotRealtimeUserId = userId;
+  shotRealtimeChannel = supabaseClient
+    .channel("gpl-shots-" + userId)
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "shots",
+      filter: "user_id=eq." + userId
+    }, () => {
+      // Re-query the full list so deletes are reflected even when DELETE payloads omit old rows.
+      refreshShotsFromCloud(userId);
+    })
+    .subscribe((status) => {
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+        console.error("Shot live-sync subscription status:", status);
+      }
+    });
+}
+
+// Also refresh when a device/tab becomes active again, in case it missed live events.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && currentUserId && cloudReady) {
+    refreshShotsFromCloud(currentUserId);
+  }
+});
+window.addEventListener("focus", () => {
+  if (currentUserId && cloudReady) refreshShotsFromCloud(currentUserId);
+});
+
 async function loadCloudData(userId) {
   if (!userId) return;
   if (cloudLoadInProgress && cloudLoadInProgress.userId === userId) return cloudLoadInProgress.promise;
@@ -509,6 +573,7 @@ async function loadCloudData(userId) {
 
       // This also migrates legacy browser-only shots and profile details to the account.
       await syncShotsToCloud();
+      setupShotRealtime(userId);
       if (!profileResult.data && (profile.name || profile.ball || profile.monitor)) await saveProfileToCloud();
       showAuthMessage("Your shots and golfer profile are synced to your account.");
     } catch (err) {

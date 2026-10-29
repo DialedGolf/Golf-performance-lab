@@ -94,6 +94,13 @@ input, select {
 .secondary { background: #e7eee8; color: var(--dark); }
 .danger { background: #fbe9e7; color: #9b2920; }
 button:hover { filter: brightness(.96); }
+.shot-row { cursor: pointer; transition: background-color .12s ease, box-shadow .12s ease; }
+.shot-row:hover, .shot-row:focus { background: #dcefe1; box-shadow: inset 4px 0 0 var(--green); outline: none; }
+.shot-row td:first-child { position: relative; }
+.shot-row td:first-child::after { content: " · Click to view"; color: var(--green); font-size: 12px; opacity: 0; }
+.shot-row:hover td:first-child::after, .shot-row:focus td:first-child::after { opacity: 1; }
+.shot-detail-row td { white-space: normal; background: #f7faf7; padding: 14px; }
+.shot-detail-row .notice { margin: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th, td {
   padding: 10px 8px;
@@ -566,7 +573,7 @@ function statCard(label, value) {
 function tableHTML(items, includeClub) {
   const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;
   const rows = items.map(s => {
-    const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
+    const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
       <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
       <td>${s.target === null ? "—" : fmt(s.target)}</td>
       <td>${new Date(s.date).toLocaleDateString()}</td></tr>`;

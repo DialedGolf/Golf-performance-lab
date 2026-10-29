@@ -573,7 +573,7 @@ function statCard(label, value) {
 function tableHTML(items, includeClub) {
   const header = `<thead><tr>${includeClub ? "<th>Club</th>" : ""}<th>Carry</th><th>Offline</th><th>Target</th><th>Date</th></tr></thead>`;
   const rows = items.map(s => {
-    const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)')} "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
+    const row = `<tr ${includeClub ? `class="shot-row" role="button" tabindex="0" title="Click to view shot metrics" aria-expanded="${selectedShotId === s.id}" onclick="selectShot('${esc(s.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectShot('${esc(s.id)}') "` : ""}>${includeClub ? `<td>${esc(s.club)}</td>` : ""}
       <td>${fmt(s.carry)}</td><td>${s.offline === null ? "—" : fmt(s.offline)}</td>
       <td>${s.target === null ? "—" : fmt(s.target)}</td>
       <td>${new Date(s.date).toLocaleDateString()}</td></tr>`;

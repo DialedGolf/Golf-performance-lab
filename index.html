@@ -101,10 +101,9 @@ button:hover { filter: brightness(.96); }
 .shot-row:hover td:first-child::after, .shot-row:focus td:first-child::after { opacity: 1; }
 .shot-date-cell { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .delete-shot-button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 6px; padding: 5px 7px; background: #fbe9e7; color: #b42318; cursor: pointer; font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .12s ease; }
-tr:hover .delete-shot-button, tr:focus-within .delete-shot-button { opacity: 1; pointer-events: auto; }
-.delete-shot-button:focus { opacity: 1; pointer-events: auto; outline: 2px solid #b42318; outline-offset: 2px; }
+tr.shot-row:hover .delete-shot-button { opacity: 1; pointer-events: auto; }
+.delete-shot-button:focus { outline: 2px solid #b42318; outline-offset: 2px; }
 .delete-shot-button:hover { background: #f7d6d2; }
-@media (hover: none) { .delete-shot-button { opacity: 1; pointer-events: auto; } }
 .shot-detail-row td { white-space: normal; background: #f7faf7; padding: 14px; }
 .shot-detail-row .notice { margin: 0; }
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -839,11 +838,11 @@ function deleteShot(id, event) {
     event.preventDefault();
     event.stopPropagation();
   }
-  const shot = shots.find(s => String(s.id) === String(id));
-  if (!shot) return;
-  if (!confirm(`Delete this ${shot.club || ""} shot recorded on ${shot.date ? new Date(shot.date).toLocaleString() : "unknown date"}? This cannot be undone.`)) return;
+  const exists = shots.some(s => String(s.id) === String(id));
+  if (!exists) return;
+  // Delete immediately on the first click; saveShots queues the cloud sync.
   shots = shots.filter(s => String(s.id) !== String(id));
-  if (selectedShotId === id) selectedShotId = null;
+  if (String(selectedShotId) === String(id)) selectedShotId = null;
   saveShots();
   render();
 }

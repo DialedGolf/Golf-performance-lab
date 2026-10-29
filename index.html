@@ -526,6 +526,9 @@ async function loadCloudData(userId) {
 async function syncShotsToCloud() {
   if (!currentUserId || !cloudReady) return;
   const userId = currentUserId;
+  shots.forEach(s => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(String(s.id))) s.id = makeUuid();
+  });
   const snapshot = shots.map(s => ({ ...s }));
   const rows = snapshot.map(s => shotToRow(s, userId));
   const validIds = rows.map(row => row.id);

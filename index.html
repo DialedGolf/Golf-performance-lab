@@ -170,10 +170,7 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
   </div>
   <div class="card">
     <h2>Your Data</h2>
-    <p class="muted">Your shots are saved in this browser on this device. They are not automatically shared across devices.</p>
-    <button class="secondary" onclick="exportCSV()">Export CSV</button>
-    <button class="secondary" onclick="document.getElementById('csvFile').click()">Import CSV</button>
-    <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" onchange="importCSV(event)">
+    <p class="muted">Your shots are saved to your account when you are signed in.</p>
   </div>
 </section>
 
@@ -201,6 +198,13 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
       <button class="primary" type="submit">Save Shot</button>
     </form>
     <p id="formMessage" class="muted" role="status"></p>
+  </div>
+  <div class="card">
+    <h2>Import &amp; Export Shots</h2>
+    <p class="muted">Save a backup of your shots as a CSV file, or import shots from a CSV file.</p>
+    <button class="secondary" onclick="exportCSV()">Export CSV</button>
+    <button class="secondary" onclick="document.getElementById('csvFile').click()">Import CSV</button>
+    <input type="file" id="csvFile" accept=".csv,text/csv" style="display:none" onchange="importCSV(event)">
   </div>
 </section>
 

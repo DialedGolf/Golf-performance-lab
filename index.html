@@ -702,8 +702,8 @@ function runDistanceGainer(event) {
   const avgSpeed = mean(speedShots.map(s => Number(s.clubSpeed)));
   const avgBall = mean(driverShots.filter(s => Number(s.ballSpeed) > 0).map(s => Number(s.ballSpeed)));
   const smash = mean(driverShots.filter(s => Number(s.clubSpeed) > 0 && Number(s.ballSpeed) > 0).map(s => Number(s.ballSpeed) / Number(s.clubSpeed)));
-  const avgLaunch = mean(driverShots.filter(s => Number.isFinite(Number(s.launch))).map(s => Number(s.launch)));
-  const avgSpin = mean(driverShots.filter(s => Number.isFinite(Number(s.spin))).map(s => Number(s.spin)));
+  const avgLaunch = mean(driverShots.filter(s => s.launch !== null && s.launch !== undefined && Number.isFinite(Number(s.launch))).map(s => Number(s.launch)));
+  const avgSpin = mean(driverShots.filter(s => s.spin !== null && s.spin !== undefined && Number.isFinite(Number(s.spin))).map(s => Number(s.spin)));
   const gap = goal - avgCarry;
   const requiredSpeed = avgSpeed && avgCarry > 0 ? avgSpeed * Math.sqrt(goal / avgCarry) : null;
   const requiredBall = requiredSpeed && smash ? requiredSpeed * smash : null;

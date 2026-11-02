@@ -690,112 +690,75 @@ function runDistanceGainer(event) {
     message.textContent = "Please enter a valid goal, age, and height.";
     return;
   }
-
-  const driverShots = shots
-    .filter(s => String(s.club || "").toLowerCase() === "driver" && Number.isFinite(Number(s.carry)))
-    .slice()
-    .sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0))
-    .slice(0,20);
+  const driverShots = shots.filter(s => String(s.club || "").toLowerCase() === "driver" && Number.isFinite(Number(s.carry)))
+    .slice().sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0,20);
   if (driverShots.length < 5) {
-    message.textContent = "Record at least 5 driver shots before generating a useful analysis. Distance Gainer will use up to your 20 most recent driver shots.";
+    message.textContent = "Record at least 5 driver shots first. The analysis uses up to your 20 most recent driver shots.";
     results.innerHTML = "";
     return;
   }
-
   const avgCarry = mean(driverShots.map(s => Number(s.carry)));
-  const speedShots = driverShots.filter(s => Number.isFinite(Number(s.clubSpeed)) && Number(s.clubSpeed) > 0);
-  const ballShots = driverShots.filter(s => Number.isFinite(Number(s.ballSpeed)) && Number(s.ballSpeed) > 0);
+  const speedShots = driverShots.filter(s => Number(s.clubSpeed) > 0);
   const avgSpeed = mean(speedShots.map(s => Number(s.clubSpeed)));
-  const avgBall = mean(ballShots.map(s => Number(s.ballSpeed)));
-  const smashValues = driverShots.filter(s => Number(s.clubSpeed) > 0 && Number(s.ballSpeed) > 0)
-    .map(s => Number(s.ballSpeed) / Number(s.clubSpeed)));
-  const smash = mean(smashValues);
+  const avgBall = mean(driverShots.filter(s => Number(s.ballSpeed) > 0).map(s => Number(s.ballSpeed)));
+  const smash = mean(driverShots.filter(s => Number(s.clubSpeed) > 0 && Number(s.ballSpeed) > 0).map(s => Number(s.ballSpeed) / Number(s.clubSpeed)));
   const avgLaunch = mean(driverShots.filter(s => Number.isFinite(Number(s.launch))).map(s => Number(s.launch)));
   const avgSpin = mean(driverShots.filter(s => Number.isFinite(Number(s.spin))).map(s => Number(s.spin)));
-
   const gap = goal - avgCarry;
-  const requiredSpeed = avgSpeed && avgCarry > 0 && goal > 0
-    ? avgSpeed * Math.sqrt(goal / avgCarry) : null;
-  const estimatedRequiredBall = requiredSpeed && smash ? requiredSpeed * smash : null;
-  let focusTitle = "Build a complete distance profile";
-  let focusText = "Your recorded data does not yet show one clear limiting factor. Start by checking strike quality, launch conditions, and club speed with a coach or launch monitor specialist.";
-  let contactFocus = false;
+  const requiredSpeed = avgSpeed && avgCarry > 0 ? avgSpeed * Math.sqrt(goal / avgCarry) : null;
+  const requiredBall = requiredSpeed && smash ? requiredSpeed * smash : null;
+  let focus = "Review contact, launch conditions, and speed together with a golf coach.";
+  let priority = "Build a complete distance profile";
   if (smash !== null && smash < 1.44) {
-    focusTitle = "Priority: improve strike efficiency";
-    focusText = "Your average smash factor suggests there may be room to transfer more of your existing club speed into ball speed. Work with a qualified golf coach on centered contact and repeatable impact before assuming you need to swing faster.";
-    contactFocus = true;
+    priority = "Priority: strike efficiency";
+    focus = "Your average smash factor suggests an opportunity to improve energy transfer. Work with a qualified golf coach on centered, repeatable contact before prioritizing more speed.";
   } else if (smash !== null && smash >= 1.47 && avgSpeed !== null) {
-    focusTitle = "Priority: develop club speed while preserving contact";
-    focusText = "Your recorded smash factor is already relatively efficient. If you want more carry, club speed may be a useful area to investigate, while keeping contact and control consistent.";
+    priority = "Priority: club speed while preserving contact";
+    focus = "Your recorded smash factor is relatively efficient. Club speed may be a useful area to investigate, while preserving contact quality and control.";
   } else if (smash !== null) {
-    focusTitle = "Priority: check both contact and speed";
-    focusText = "Your smash factor falls between the broad efficiency flags used by this tool. Review impact location and ball speed consistency before choosing a speed-focused approach.";
+    priority = "Priority: contact and speed";
+    focus = "Review impact location and ball-speed consistency before choosing a speed-focused approach.";
   }
-
-  const safeGoalText = gap <= 0
-    ? "Your selected goal is at or below your recent average carry. Focus on making that distance repeatable and keeping your dispersion under control."
-    : "Your goal is " + fmt(gap,0) + " yards above your recent average carry. Treat it as a longer-term target; progress varies by golfer.";
-  const speedText = requiredSpeed
-    ? "A simplified speed estimate is about " + fmt(requiredSpeed,1) + " mph of club speed, assuming your current launch, spin, strike efficiency, and other conditions stay similar. This is a mathematical estimate, not a prediction."
-    : "Club-speed data is missing from these shots, so a speed target cannot be estimated yet.";
-  const ballText = estimatedRequiredBall
-    ? "At your current average smash factor, that estimate corresponds to roughly " + fmt(estimatedRequiredBall,1) + " mph ball speed."
-    : "Ball-speed data is incomplete, so the tool cannot estimate the ball speed associated with your goal.";
+  const speedLine = requiredSpeed === null ? "Club-speed data is missing, so a speed estimate is unavailable." :
+    "A simplified estimate is " + requiredSpeed.toFixed(1) + " mph club speed if launch, spin, contact, and conditions remain similar.";
+  const ballLine = requiredBall === null ? "Ball-speed estimate unavailable because some data is missing." :
+    "At your current smash factor, that would be about " + requiredBall.toFixed(1) + " mph ball speed.";
+  const plan = smash !== null && smash < 1.44
+    ? [
+      "Use impact-location feedback or a coach to establish where your driver strikes the face.",
+      "Practice controlled, repeatable contact and track ball speed and smash factor.",
+      "Review launch and spin on well-struck shots with a qualified coach or fitter.",
+      "Compare a new set of 20 driver shots with this baseline."
+    ]
+    : [
+      "Record a consistent baseline for club speed, ball speed, carry, launch, spin, and dispersion.",
+      "Ask a qualified coach to select age- and experience-appropriate physical preparation; research supports combining general conditioning with golf-specific preparation.",
+      "Work with a golf instructor on sequencing, balance, and maintaining centered contact.",
+      "After a training block, compare a new set of 20 driver shots with this baseline."
+    ];
+  const ageNote = age < 18
+    ? "For golfers under 18, physical training should be age-appropriate and supervised by a qualified coach or adult. This tool does not prescribe weights, maximal-effort drills, or a workout schedule."
+    : "Age is context only; the cited studies do not provide a precise age-and-height formula for predicting individual distance gains.";
   const metrics = [
     ["Driver shots analyzed", driverShots.length + " / 20"],
-    ["Average carry", fmt(avgCarry,1) + " yd"],
-    ["Average club speed", avgSpeed === null ? "Not recorded" : fmt(avgSpeed,1) + " mph"],
-    ["Average ball speed", avgBall === null ? "Not recorded" : fmt(avgBall,1) + " mph"],
-    ["Average smash factor", smash === null ? "Not recorded" : fmt(smash,2)],
-    ["Average launch", avgLaunch === null ? "Not recorded" : fmt(avgLaunch,1) + "°"],
-    ["Average backspin", avgSpin === null ? "Not recorded" : Math.round(avgSpin).toLocaleString() + " rpm"]
+    ["Average carry", avgCarry.toFixed(1) + " yd"],
+    ["Average club speed", avgSpeed === null ? "Not recorded" : avgSpeed.toFixed(1) + " mph"],
+    ["Average ball speed", avgBall === null ? "Not recorded" : avgBall.toFixed(1) + " mph"],
+    ["Average smash factor", smash === null ? "Not recorded" : smash.toFixed(2)],
+    ["Average launch", avgLaunch === null ? "Not recorded" : avgLaunch.toFixed(1) + "°"],
+    ["Average backspin", avgSpin === null ? "Not recorded" : Math.round(avgSpin) + " rpm"]
   ];
-  const metricHtml = metrics.map(m => "<div class=\"card\"><div class=\"muted\">" + m[0] + "</div><strong>" + m[1] + "</strong></div>").join("");
-  const plan = contactFocus
-    ? [
-        "<strong>1. Get a contact baseline.</strong> Use impact-location feedback or a coach to see whether strikes are consistently near the center of the face.",
-        "<strong>2. Practice repeatable contact.</strong> Use controlled, comfortable swings and track ball speed and smash factor. Avoid chasing speed at the expense of balance or control.",
-        "<strong>3. Recheck launch conditions.</strong> Compare launch and spin across well-struck shots with a qualified fitter or coach; equipment changes should be based on measured results.",
-        "<strong>4. Re-test after a practice block.</strong> Compare another set of 20 driver shots with this baseline, including carry, ball speed, and dispersion."
-      ]
-    : [
-        "<strong>1. Establish a safe baseline.</strong> Record club speed, ball speed, carry, launch, spin, and dispersion over another consistent set of driver shots.",
-        "<strong>2. Build a supervised development plan.</strong> Research supports combining general strength and conditioning with golf-specific preparation, but the program should be selected by a qualified coach based on age, experience, and readiness.",
-        "<strong>3. Keep golf-skill practice in the plan.</strong> Work with a golf instructor on sequencing, balance, and maintaining centered contact as speed changes.",
-        "<strong>4. Re-test consistently.</strong> After a training block, compare a new set of 20 driver shots with this baseline. Look for changes in carry and ball speed without a major loss of accuracy."
-      ];
-
-  const ageNote = age < 18
-    ? "Because you entered an age under 18, any physical training should be age-appropriate and supervised by a qualified coach or adult. This page does not prescribe weights, maximal-effort drills, or a workout schedule."
-    : "Age is included as context, but the studies listed do not provide a precise age-and-height formula for predicting an individual's distance gains.";
-  const html = `
-    <div class="card">
-      <h2>Your Driver Baseline</h2>
-      <p class="muted">Based on your ${driverShots.length} most recent recorded driver shots · Age: ${age} · Height: ${fmt(height / 12,1)} ft · Goal: ${fmt(goal,0)} yd carry</p>
-      <div class="grid">${metricHtml}</div>
-    </div>
-    <div class="card">
-      <h2>Your Distance Gap</h2>
-      <p>${safeGoalText}</p>
-      <p>${speedText}</p>
-      <p>${ballText}</p>
-      <p class="muted">This estimate uses a simplified square-root relationship between carry and club speed. It assumes launch, spin, strike quality, ball, club, and environmental conditions stay similar. Real ball flight is more complex, so this is not a guaranteed speed requirement.</p>
-    </div>
-    <div class="card">
-      <h2>${focusTitle}</h2>
-      <p>${focusText}</p>
-    </div>
-    <div class="card">
-      <h2>Your Action Plan</h2>
-      <ol>${plan.map(p => "<li style='margin-bottom:10px'>" + p + "</li>").join("")}</ol>
-      <div class="notice">${ageNote}</div>
-      <p class="muted">Height is displayed for context only. Current research does not justify prescribing a distance target or training plan from height alone.</p>
-    </div>
-  `;
+  let html = '<div class="card"><h2>Your Driver Baseline</h2><p class="muted">Based on your ' + driverShots.length + ' most recent driver shots · Age: ' + age + ' · Height: ' + (height / 12).toFixed(1) + ' ft · Goal: ' + goal + ' yd carry</p><div class="grid">';
+  metrics.forEach(m => { html += '<div class="card"><div class="muted">' + m[0] + '</div><strong>' + m[1] + '</strong></div>'; });
+  html += '</div></div>';
+  html += '<div class="card"><h2>Your Distance Gap</h2><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">This simplified square-root estimate assumes other ball-flight factors remain similar. It is not a guaranteed speed requirement or prediction.</p></div>';
+  html += '<div class="card"><h2>' + priority + '</h2><p>' + focus + '</p></div>';
+  html += '<div class="card"><h2>Your Action Plan</h2><ol>';
+  plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });
+  html += '</ol><div class="notice">' + ageNote + '</div><p class="muted">Height is shown as context only. Current research does not justify prescribing a distance target or training plan from height alone.</p></div>';
   results.innerHTML = html;
   message.textContent = "Analysis complete. Your settings and plan are saved in this browser for now.";
-  try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal,age,height,html})); }
-  catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }
+  try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal:goal,age:age,height:height,html:html})); } catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }
 }
 
 document.getElementById("distanceForm").addEventListener("submit", runDistanceGainer);

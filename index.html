@@ -723,18 +723,20 @@ function runDistanceGainer(event) {
     "A simplified estimate is " + requiredSpeed.toFixed(1) + " mph club speed if launch, spin, contact, and conditions remain similar.";
   const ballLine = requiredBall === null ? "Ball-speed estimate unavailable because some data is missing." :
     "At your current smash factor, that would be about " + requiredBall.toFixed(1) + " mph ball speed.";
-  const plan = smash !== null && smash < 1.44
+  const contactFocus = smash !== null && smash < 1.44;
+  const mixedFocus = smash !== null && smash >= 1.44 && smash < 1.47;
+  const plan = contactFocus
     ? [
       "Use impact-location feedback or a coach to establish where your driver strikes the face.",
-      "Practice controlled, repeatable contact and track ball speed and smash factor.",
+      "Practice the centered-contact drills below and track ball speed and smash factor.",
       "Review launch and spin on well-struck shots with a qualified coach or fitter.",
       "Compare a new set of 20 driver shots with this baseline."
     ]
     : [
-      "Record a consistent baseline for club speed, ball speed, carry, launch, spin, and dispersion.",
-      "Ask a qualified coach to select age- and experience-appropriate physical preparation; research supports combining general conditioning with golf-specific preparation.",
-      "Work with a golf instructor on sequencing, balance, and maintaining centered contact.",
-      "After a training block, compare a new set of 20 driver shots with this baseline."
+      "Keep contact consistent while practicing the controlled speed-development session below.",
+      "Use a qualified golf coach to check setup, balance, and swing sequencing.",
+      "Do not chase speed if it causes pain, loss of balance, or repeated off-center contact.",
+      "Compare a new set of 20 driver shots with this baseline."
     ];
   const ageNote = age < 18
     ? "For golfers under 18, physical training should be age-appropriate and supervised by a qualified coach or adult. This tool does not prescribe weights, maximal-effort drills, or a workout schedule."
@@ -753,6 +755,27 @@ function runDistanceGainer(event) {
   html += '</div></div>';
   html += '<div class="card"><h2>Your Distance Gap</h2><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">This simplified square-root estimate assumes other ball-flight factors remain similar. It is not a guaranteed speed requirement or prediction.</p></div>';
   html += '<div class="card"><h2>' + priority + '</h2><p>' + focus + '</p></div>';
+  if (contactFocus) {
+    html += '<div class="card"><h2>Recommended Contact Drills</h2><p>Start with these low-intensity practice drills. Use impact tape or foot spray only as directed by a coach, and hit balls from a safe practice area.</p><ol>' +
+      '<li style="margin-bottom:12px"><strong>Face-strike check:</strong> Apply impact tape or ask a coach to use an approved face-marking spray. Hit 5 easy shots, note the strike pattern, then make one setup or tee-height adjustment at a time. Repeat for 2 rounds. Aim for a tighter pattern, not extra distance.</li>' +
+      '<li style="margin-bottom:12px"><strong>Tee-gate drill:</strong> With a coach helping set it up, place two tees just wider than the clubhead around the impact area. Make 2 sets of 5 slow practice swings through the gate without touching either tee. This encourages a repeatable delivery.</li>' +
+      '<li style="margin-bottom:12px"><strong>Half-swing contact drill:</strong> Make waist-high-to-waist-high swings at an easy pace for 2 sets of 5 balls. Keep balance and a steady finish. Gradually lengthen the swing only while contact stays controlled.</li>' +
+      '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor with your starting set.</li>' +
+      '</ol><p class="muted">Suggested practice: 1–2 short sessions per week, with a rest day between sessions. Stop if anything hurts and ask a coach to check the setup.</p></div>';
+  } else {
+    html += '<div class="card"><h2>Recommended Club-Speed Practice Session</h2><p>This is a technique-first session using a normal golf club. It is not an all-out speed workout. A qualified coach should supervise younger golfers and adjust the session to the golfer\'s experience.</p>' +
+      '<ol>' +
+      '<li style="margin-bottom:12px"><strong>Warm-up (5–8 minutes):</strong> Easy walking, gentle shoulder and hip mobility, and relaxed practice swings. Build up gradually.</li>' +
+      '<li style="margin-bottom:12px"><strong>Balance rehearsal:</strong> Make 2 sets of 5 smooth swings with feet close together, using an easy pace. Hold a balanced finish for 2 seconds.</li>' +
+      '<li style="margin-bottom:12px"><strong>Step-through rhythm drill:</strong> With plenty of space and a coach checking safety, make 2 sets of 5 slow, no-ball rehearsal swings. Let the trail foot move forward naturally after the swing while keeping control. This is for rhythm and sequencing, not maximum effort.</li>' +
+      '<li style="margin-bottom:12px"><strong>Controlled speed-intent swings:</strong> If the warm-up feels comfortable and a coach approves, make 3 sets of 3 swings with a normal driver at a quick-but-controlled pace (about 70–80% effort). Rest 45–60 seconds between sets. Stop if balance or swing shape breaks down.</li>' +
+      '<li style="margin-bottom:12px"><strong>Ball-striking check:</strong> Hit 5 comfortable driver shots and compare club speed, ball speed, smash factor, and dispersion. Keep swings balanced and well-struck.</li>' +
+      '</ol><p><strong>Frequency:</strong> Start with 1–2 sessions per week, leaving at least one day between them. Do not add sessions just to chase a number.</p>' +
+      '<p class="muted">Avoid weighted-club or maximal-effort routines unless a qualified golf/strength coach specifically assesses and supervises them. Stop if you feel pain, dizziness, or unusual discomfort.</p></div>';
+  }
+  if (mixedFocus) {
+    html += '<div class="card"><h3>Also work on contact</h3><p>Your smash factor is in the middle range used by this tool. Add the face-strike check and half-swing contact drill before increasing the speed-intent portion.</p></div>';
+  }
   html += '<div class="card"><h2>Your Action Plan</h2><ol>';
   plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });
   html += '</ol><div class="notice">' + ageNote + '</div><p class="muted">Height is shown as context only. Current research does not justify prescribing a distance target or training plan from height alone.</p></div>';

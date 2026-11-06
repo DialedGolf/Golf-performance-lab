@@ -264,11 +264,8 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
     <form id="distanceForm">
       <div class="form-grid">
         <div class="field"><label for="distanceGoal">Desired carry distance (yards)</label><input id="distanceGoal" type="number" min="1" max="500" step="1" placeholder="e.g. 275" required></div>
-        <div class="field"><label for="distanceAge">Age</label><input id="distanceAge" type="number" min="5" max="100" step="1" placeholder="Age in years" required></div>
-        <div class="field"><label for="distanceHeight">Height</label><input id="distanceHeight" type="number" min="36" max="96" step="0.5" placeholder="Height in inches" required></div>
       </div>
       <button class="primary" type="submit">Analyze My Distance</button>
-      <p class="muted" style="margin:10px 0 0">Height is collected as context only. It is not used to assume how far someone should hit the ball.</p>
     </form>
     <p id="distanceMessage" class="muted"></p>
   </div>
@@ -672,9 +669,7 @@ function loadDistanceForm() {
     const saved = JSON.parse(localStorage.getItem(DISTANCE_KEY) || "null");
     if (saved) {
       document.getElementById("distanceGoal").value = saved.goal || "";
-      document.getElementById("distanceAge").value = saved.age || "";
-      document.getElementById("distanceHeight").value = saved.height || "";
-      if (saved.html) document.getElementById("distanceResults").innerHTML = saved.html;
+      document.getElementById("distanceResults").innerHTML = "";
     }
   } catch (err) { console.warn("Could not load Distance Gainer settings:", err); }
 }
@@ -682,12 +677,10 @@ function loadDistanceForm() {
 function runDistanceGainer(event) {
   event.preventDefault();
   const goal = Number(document.getElementById("distanceGoal").value);
-  const age = Number(document.getElementById("distanceAge").value);
-  const height = Number(document.getElementById("distanceHeight").value);
   const message = document.getElementById("distanceMessage");
   const results = document.getElementById("distanceResults");
-  if (!Number.isFinite(goal) || goal <= 0 || !Number.isInteger(age) || age < 5 || age > 100 || !Number.isFinite(height) || height < 36 || height > 96) {
-    message.textContent = "Please enter a valid goal, age, and height.";
+  if (!Number.isFinite(goal) || goal <= 0 || goal > 500) {
+    message.textContent = "Please enter a valid carry-distance goal.";
     return;
   }
   const driverShots = shots.filter(s => String(s.club || "").toLowerCase() === "driver" && Number.isFinite(Number(s.carry)))
@@ -738,9 +731,7 @@ function runDistanceGainer(event) {
       "Do not chase speed if it causes pain, loss of balance, or repeated off-center contact.",
       "Compare a new set of 20 driver shots with this baseline."
     ];
-  const ageNote = age < 18
-    ? "For golfers under 18, physical training should be age-appropriate and supervised by a qualified coach or adult. This tool does not prescribe weights, maximal-effort drills, or a workout schedule."
-    : "Age is context only; the cited studies do not provide a precise age-and-height formula for predicting individual distance gains.";
+  const trainingNote = "Training should be appropriate for the golfer's age and experience. Younger golfers should practice physical-training drills with guidance from a qualified coach or adult.";
   const metrics = [
     ["Driver shots analyzed", driverShots.length + " / 20"],
     ["Average carry", avgCarry.toFixed(1) + " yd"],
@@ -750,7 +741,7 @@ function runDistanceGainer(event) {
     ["Average launch", avgLaunch === null ? "Not recorded" : avgLaunch.toFixed(1) + "°"],
     ["Average backspin", avgSpin === null ? "Not recorded" : Math.round(avgSpin) + " rpm"]
   ];
-  let html = '<div class="card"><h2>Your Driver Baseline</h2><p class="muted">Based on your ' + driverShots.length + ' most recent driver shots · Age: ' + age + ' · Height: ' + (height / 12).toFixed(1) + ' ft · Goal: ' + goal + ' yd carry</p><div class="grid">';
+  let html = '<div class="card"><h2>Your Driver Baseline</h2><p class="muted">Based on your ' + driverShots.length + ' most recent driver shots · Goal: ' + goal + ' yd carry</p><div class="grid">';
   metrics.forEach(m => { html += '<div class="card"><div class="muted">' + m[0] + '</div><strong>' + m[1] + '</strong></div>'; });
   html += '</div></div>';
   html += '<div class="card"><h2>Your Distance Gap</h2><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">This simplified square-root estimate assumes other ball-flight factors remain similar. It is not a guaranteed speed requirement or prediction.</p></div>';
@@ -778,10 +769,10 @@ function runDistanceGainer(event) {
   }
   html += '<div class="card"><h2>Your Action Plan</h2><ol>';
   plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });
-  html += '</ol><div class="notice">' + ageNote + '</div><p class="muted">Height is shown as context only. Current research does not justify prescribing a distance target or training plan from height alone.</p></div>';
+  html += '</ol><div class="notice">' + trainingNote + '</div></div>';
   results.innerHTML = html;
   message.textContent = "Analysis complete. Your settings and plan are saved in this browser for now.";
-  try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal:goal,age:age,height:height,html:html})); } catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }
+  try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal:goal,html:html})); } catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }
 }
 
 document.getElementById("distanceForm").addEventListener("submit", runDistanceGainer);

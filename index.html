@@ -259,19 +259,20 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
 <section id="distance" class="page">
   <div class="card">
     <h2>Distance Gainer</h2>
-    <p>Use your 20 most recent driver shots to find the biggest opportunities to improve your carry distance. Add driver shots in Shot Analysis first for the most useful results.</p>
-    <div class="notice">This tool provides estimates and general golf-performance education, not guaranteed results or medical/training advice. Physical training should be appropriate for your age and experience and planned with a qualified coach or other qualified adult.</div>
+    <p>Find the biggest opportunities to improve your driver distance using up to your 20 most recent driver shots. The analysis works best when your shots include club speed, ball speed, launch, spin, and attack angle.</p>
+    <div class="notice"><strong>How it works:</strong> 1. Enter your carry goal. 2. Choose the equipment you have. 3. Generate your analysis. 4. Start with the highest-priority recommendation. You need at least 5 recorded driver shots.</div>
+    <div class="muted">This tool provides estimates and golf-performance education, not guaranteed results or a substitute for coaching or club fitting.</div>
     <form id="distanceForm">
       <div class="form-grid">
         <div class="field"><label for="distanceGoal">Desired carry distance (yards)</label><input id="distanceGoal" type="number" min="1" max="500" step="1" placeholder="e.g. 275" required></div>
       </div>
-      <button class="primary" type="submit">Analyze My Distance</button>
+      <button class="primary" type="submit">Generate My Distance Plan</button>
     </form>
     <p id="distanceMessage" class="muted"></p>
   </div>
   <div class="card" id="speedEquipmentCard">
-    <h3>Equipment available for your speed workout</h3>
-    <p class="muted">Choose the equipment you can safely use. Select Home Gym for a common home setup, or choose individual items.</p>
+    <h3>Step 2 · Your available equipment</h3>
+    <p class="muted">Choose what you have access to. The workout will automatically use suitable alternatives. No equipment is required.</p>
     <div class="form-grid">
       <label class="field"><span><input type="checkbox" id="equipmentHomeGym" value="home"> Home gym (dumbbells, bands, bench)</span></label>
       <label class="field"><span><input type="checkbox" name="speedEquipment" value="bands"> Resistance bands</span></label>
@@ -285,9 +286,9 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
     <button type="button" class="secondary" id="saveEquipment">Save Equipment Choices</button>
     <p id="equipmentMessage" class="muted" role="status"></p>
   </div>
-  <div id="distanceResults"></div>
-  <div class="card">
-    <h3>Research behind the recommendations</h3>
+  <div id="distanceResults" aria-live="polite"></div>
+  <details class="card">
+    <summary><strong>Research behind the recommendations</strong> <span class="muted">· Study links and evidence notes</span></summary>
     <p>These studies support broad training principles. They do not prove that a specific routine will produce the same result for every golfer, or that a study exactly matches your age and height.</p>
     <ul>
       <li><strong>Uthoff, Sommerfield &amp; Pichardo (2021):</strong> A systematic review of 20 studies reported that combined general resistance and golf-specific training was associated with average improvements in clubhead speed and hitting distance. <a href="https://pubmed.ncbi.nlm.nih.gov/34224506/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
@@ -298,7 +299,7 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
       <li><strong>Liu et al. (2026):</strong> A meta-analysis of nine trials (220 golfers) found a small positive effect from core-inclusive training. The authors rated certainty as low and said the apparent benefit of golf-specific rotational core training remains preliminary. <a href="https://pubmed.ncbi.nlm.nih.gov/42942195/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
       <li><strong>Exercise-specific evidence:</strong> The 2021 Uthoff review identified one small study of golf-specific medicine-ball throws with a large reported clubhead-speed change. Because it was a single study, the result should not be treated as a reliable expected gain or proof that medicine-ball throws are best. <a href="https://pubmed.ncbi.nlm.nih.gov/34224506/" target="_blank" rel="noopener">See the review and its study summary</a>.</li>
     </ul>
-  </div>
+  </details>
 </section>
 
 <section id="research" class="page">
@@ -871,25 +872,24 @@ function runDistanceGainer(event) {
     ["Average launch", avgLaunch === null ? "Not recorded" : avgLaunch.toFixed(1) + "°"],
     ["Average backspin", avgSpin === null ? "Not recorded" : Math.round(avgSpin) + " rpm"]
   ];
-  let html = '<div class="card"><h2>Your Driver Baseline</h2><p class="muted">Based on your ' + driverShots.length + ' most recent driver shots · Goal: ' + goal + ' yd carry</p><div class="grid">';
+  let html = '<div class="card"><h2>Step 3 · Your results at a glance</h2><p class="muted">Based on your ' + driverShots.length + ' most recent driver shots · Carry goal: ' + goal + ' yd</p><div class="grid">';
   metrics.forEach(m => { html += '<div class="card"><div class="muted">' + m[0] + '</div><strong>' + m[1] + '</strong></div>'; });
-  html += '</div></div>';
-  html += '<div class="card"><h2>Your Distance Gap</h2><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">This simplified square-root estimate assumes other ball-flight factors remain similar. It is not a guaranteed speed requirement or prediction.</p></div>';
-  html += '<div class="card"><h2>' + priority + '</h2><p>' + focus + '</p></div>';
-  html += '<div class="card"><h2>Recommended Club-Speed Workout</h2><p>This workout is included for every golfer because developing club speed is a key part of a distance-improvement plan. It adapts to the equipment selected above.</p></div>';
-  html += buildSpeedWorkout(selectedSpeedEquipment());
+  html += '</div><h3>Your distance gap</h3><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">The speed estimate is a simplified calculation that assumes other ball-flight factors remain similar. It is not a guaranteed requirement or prediction.</p></div>';
+  html += '<div class="card"><h2>Step 4 · Where to focus first</h2><p><strong>' + priority + '</strong></p><p>' + focus + '</p><p class="muted">Start with the recommendations below that match your recorded data. Missing metrics are not guessed.</p></div>';
+  html += buildDistanceLimiters(driverShots);
   if (contactFocus) {
-    html += '<div class="card"><h2>Additional Recommended Contact Drills</h2><p>Your average smash factor is below 1.45, so these drills are included alongside your club-speed workout. Start with low-intensity practice and use impact feedback only as directed by a coach.</p><ol>' +
+    html += '<div class="card"><h2>Contact practice</h2><p>Your average smash factor is below 1.45, so these drills are included alongside your club-speed workout. Start with low-intensity practice and use impact feedback only as directed by a coach.</p><ol>' +
       '<li style="margin-bottom:12px"><strong>Face-strike check:</strong> Apply impact tape or ask a coach to use an approved face-marking spray. Hit 5 easy shots, note the strike pattern, then make one setup or tee-height adjustment at a time. Repeat for 2 rounds. Aim for a tighter pattern, not extra distance.</li>' +
       '<li style="margin-bottom:12px"><strong>Tee-gate drill:</strong> With a coach helping set it up, place two tees just wider than the clubhead around the impact area. Make 2 sets of 5 slow practice swings through the gate without touching either tee.</li>' +
       '<li style="margin-bottom:12px"><strong>Half-swing contact drill:</strong> Make waist-high-to-waist-high swings at an easy pace for 2 sets of 5 balls. Keep balance and a steady finish.</li>' +
       '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor.</li>' +
       '</ol><p class="muted">Keep these drills controlled and separate from speed-focused swings if contact becomes inconsistent. Stop if anything hurts and ask a coach to check the setup.</p></div>';
   }
-  html += buildDistanceLimiters(driverShots);
-  html += '<div class="card"><h2>Your Action Plan</h2><ol>';
+  html += '<div class="card"><h2>Step 5 · Your next practice priorities</h2><p>Keep the plan simple. Work on one main change at a time and use the same launch monitor setup when comparing results.</p><ol>';
   plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });
   html += '</ol><div class="notice">' + trainingNote + '</div></div>';
+  html += '<div class="card"><h2>Step 6 · Club-speed workout</h2><p>This session is adapted to the equipment you selected. Keep it controlled and prioritize good technique over lifting heavier or moving faster.</p></div>';
+  html += buildSpeedWorkout(selectedSpeedEquipment());
   results.innerHTML = html;
   message.textContent = "Analysis complete. Your settings and plan are saved in this browser for now.";
   try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal:goal,html:html})); } catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }

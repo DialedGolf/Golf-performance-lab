@@ -269,6 +269,23 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
     </form>
     <p id="distanceMessage" class="muted"></p>
   </div>
+  <div class="card" id="speedEquipmentCard">
+    <h3>Equipment available for your speed workout</h3>
+    <p class="muted">Choose the equipment you can safely use. Select Home Gym for a common home setup, or choose individual items.</p>
+    <div class="form-grid">
+      <label class="field"><span><input type="checkbox" id="equipmentHomeGym" value="home"> Home gym (dumbbells, bands, bench)</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="bands"> Resistance bands</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="dumbbells"> Dumbbells</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="medicine"> Medicine ball</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="cable"> Cable machine</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="machines"> Weight machines</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="bench"> Bench or sturdy step</span></label>
+      <label class="field"><span><input type="checkbox" name="speedEquipment" value="barbell"> Barbell / weight plates</span></label>
+    </div>
+    <p class="muted">No equipment is required. If you leave everything unchecked, the generator creates a bodyweight-and-golf-club session.</p>
+    <button type="button" class="secondary" id="saveEquipment">Save Equipment Choices</button>
+    <p id="equipmentMessage" class="muted" role="status"></p>
+  </div>
   <div id="distanceResults"></div>
   <div class="card">
     <h3>Research behind the recommendations</h3>
@@ -664,14 +681,55 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
 
 const DISTANCE_KEY = "gpl_distance_gainer_v1";
 
+const DISTANCE_EQUIPMENT_KEY = "gpl_distance_equipment_v1";
+const SPEED_EQUIPMENT = ["bands","dumbbells","medicine","cable","machines","bench","barbell"];
+function selectedSpeedEquipment() {
+  const selected = [...document.querySelectorAll('input[name="speedEquipment"]:checked')].map(el => el.value);
+  if (document.getElementById("equipmentHomeGym").checked) selected.push("bands","dumbbells","bench");
+  return [...new Set(selected)];
+}
+function saveSpeedEquipment() {
+  const selected = selectedSpeedEquipment();
+  try { localStorage.setItem(DISTANCE_EQUIPMENT_KEY, JSON.stringify(selected)); } catch (err) {}
+  document.getElementById("equipmentMessage").textContent = "Equipment choices saved on this device.";
+}
 function loadDistanceForm() {
   try {
     const saved = JSON.parse(localStorage.getItem(DISTANCE_KEY) || "null");
-    if (saved) {
-      document.getElementById("distanceGoal").value = saved.goal || "";
-      document.getElementById("distanceResults").innerHTML = "";
-    }
+    if (saved) document.getElementById("distanceGoal").value = saved.goal || "";
+    const equipment = JSON.parse(localStorage.getItem(DISTANCE_EQUIPMENT_KEY) || "[]");
+    const homeSet = ["bands","dumbbells","bench"];
+    document.getElementById("equipmentHomeGym").checked = homeSet.every(x => equipment.includes(x));
+    document.querySelectorAll('input[name="speedEquipment"]').forEach(el => {
+      el.checked = equipment.includes(el.value) && !(document.getElementById("equipmentHomeGym").checked && homeSet.includes(el.value));
+    });
+    document.getElementById("distanceResults").innerHTML = "";
   } catch (err) { console.warn("Could not load Distance Gainer settings:", err); }
+}
+function buildSpeedWorkout(equipment) {
+  const has = item => equipment.includes(item);
+  const exercises = [
+    {name:"Bodyweight split squat",gear:[],category:"Lower-body strength",dose:"2 sets of 6 controlled repetitions per side",why:"A bodyweight lower-body strength option. Strength training is one component used in golf conditioning programs.",cue:"Use a comfortable range of motion and keep balance."},
+    {name:"Glute bridge",gear:[],category:"Hip strength",dose:"2 sets of 8 controlled repetitions",why:"Develops basic hip-extension strength without requiring equipment.",cue:"Move smoothly and avoid arching the lower back."},
+    {name:"Dead bug",gear:[],category:"Core control",dose:"2 sets of 6 repetitions per side",why:"Trains trunk control; core-focused golf programs have been studied, although the speed evidence is still limited.",cue:"Keep the movement slow and controlled."},
+    {name:"Resistance-band row",gear:["bands"],category:"Upper-body strength",dose:"2 sets of 8–10 repetitions",why:"Band resistance is a practical way to include upper-body pulling in a general strength program.",cue:"Use a light band, keep shoulders relaxed, and avoid jerking."},
+    {name:"Pallof press",gear:["bands","cable"],category:"Core control",dose:"2 sets of 6 repetitions per side, with a brief pause",why:"A controlled anti-rotation exercise that trains trunk stability; it is not proven to add a specific amount of club speed.",cue:"Use light resistance and keep hips and shoulders facing forward."},
+    {name:"Dumbbell sit-to-stand or goblet squat",gear:["dumbbells"],category:"Lower-body strength",dose:"2 sets of 6–8 repetitions with a very manageable load",why:"A scalable lower-body strength movement. Resistance training is commonly included in golf conditioning research.",cue:"A coach or qualified adult should select the load and check technique."},
+    {name:"Low step-up",gear:["bench"],category:"Single-leg strength",dose:"2 sets of 6 repetitions per leg",why:"Builds basic single-leg strength and control using a stable, low step.",cue:"Use a secure, low platform and have support nearby."},
+    {name:"Light medicine-ball chest pass",gear:["medicine"],category:"Power skill",dose:"2 sets of 4 easy passes with full recovery",why:"Medicine-ball power exercises appear in golf-conditioning research, but individual exercise effects are not established.",cue:"Only do this with a coach, a clear space, and a light ball; no maximal throws."},
+    {name:"Seated cable row",gear:["cable"],category:"Upper-body strength",dose:"2 sets of 8 controlled repetitions",why:"A machine-based pulling option for general strength development.",cue:"Use light resistance and avoid leaning or swinging."},
+    {name:"Machine chest press",gear:["machines"],category:"Upper-body strength",dose:"2 sets of 8 controlled repetitions",why:"A supported strength option; general strength is one component of multi-part golf conditioning.",cue:"Use a comfortable range and have a qualified adult set up the machine."}
+  ];
+  const chosen = exercises.filter(ex => ex.gear.length === 0 || ex.gear.some(has));
+  const order = ["Lower-body strength","Hip strength","Upper-body strength","Single-leg strength","Core control","Power skill"];
+  chosen.sort((a,b) => order.indexOf(a.category)-order.indexOf(b.category));
+  const safeList = chosen.filter(ex => !(ex.name === "Light medicine-ball chest pass" && !has("medicine")));
+  let html = '<div class="card"><h2>Your Equipment-Based Club-Speed Workout</h2><p class="muted">Built from your saved equipment choices. This is a conservative starter session, not a promise of a particular speed increase.</p><ol>';
+  safeList.forEach(ex => {
+    html += '<li style="margin-bottom:14px"><strong>'+ex.name+'</strong> <span class="muted">('+ex.category+')</span><br><strong>Session:</strong> '+ex.dose+'<br><strong>Why it is included:</strong> '+ex.why+'<br><strong>Technique:</strong> '+ex.cue+'</li>';
+  });
+  html += '</ol><p><strong>Finish:</strong> 5–8 minutes of easy walking, gentle mobility, and relaxed golf-club swings. Keep the whole session comfortable and controlled.</p><p><strong>Frequency:</strong> Start with one coached session weekly; only add another non-consecutive day if a qualified coach says recovery and technique are good. Do not train through pain.</p><div class="notice">For younger golfers, resistance exercises should be supervised by a qualified coach or knowledgeable adult. Begin with bodyweight or light resistance, prioritize technique, and do not attempt maximal lifts or all-out throws. Barbell equipment is not used automatically by this generator; a coach must choose and supervise any barbell exercise.</div><p class="muted">Evidence note: research supports multi-component strength and golf-specific conditioning programs overall. It does not establish a reliable ranking or exact club-speed gain for each exercise listed here. These exercises are practical options within those broad training categories.</p></div>';
+  return html;
 }
 
 function runDistanceGainer(event) {
@@ -754,15 +812,8 @@ function runDistanceGainer(event) {
       '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor with your starting set.</li>' +
       '</ol><p class="muted">Suggested practice: 1–2 short sessions per week, with a rest day between sessions. Stop if anything hurts and ask a coach to check the setup.</p></div>';
   } else {
-    html += '<div class="card"><h2>Recommended Club-Speed Practice Session</h2><p>This is a technique-first session using a normal golf club. It is not an all-out speed workout. A qualified coach should supervise younger golfers and adjust the session to the golfer\'s experience.</p>' +
-      '<ol>' +
-      '<li style="margin-bottom:12px"><strong>Warm-up (5–8 minutes):</strong> Easy walking, gentle shoulder and hip mobility, and relaxed practice swings. Build up gradually.</li>' +
-      '<li style="margin-bottom:12px"><strong>Balance rehearsal:</strong> Make 2 sets of 5 smooth swings with feet close together, using an easy pace. Hold a balanced finish for 2 seconds.</li>' +
-      '<li style="margin-bottom:12px"><strong>Step-through rhythm drill:</strong> With plenty of space and a coach checking safety, make 2 sets of 5 slow, no-ball rehearsal swings. Let the trail foot move forward naturally after the swing while keeping control. This is for rhythm and sequencing, not maximum effort.</li>' +
-      '<li style="margin-bottom:12px"><strong>Controlled speed-intent swings:</strong> If the warm-up feels comfortable and a coach approves, make 3 sets of 3 swings with a normal driver at a quick-but-controlled pace (about 70–80% effort). Rest 45–60 seconds between sets. Stop if balance or swing shape breaks down.</li>' +
-      '<li style="margin-bottom:12px"><strong>Ball-striking check:</strong> Hit 5 comfortable driver shots and compare club speed, ball speed, smash factor, and dispersion. Keep swings balanced and well-struck.</li>' +
-      '</ol><p><strong>Frequency:</strong> Start with 1–2 sessions per week, leaving at least one day between them. Do not add sessions just to chase a number.</p>' +
-      '<p class="muted">Avoid weighted-club or maximal-effort routines unless a qualified golf/strength coach specifically assesses and supervises them. Stop if you feel pain, dizziness, or unusual discomfort.</p></div>';
+    html += '<div class="card"><h2>Recommended Club-Speed Practice Session</h2><p>Your workout below adapts to the equipment selected above. The research supports combined strength and golf-specific conditioning, but does not prove that one exercise produces the largest speed gain for every golfer.</p></div>';
+    html += buildSpeedWorkout(selectedSpeedEquipment());
   }
   if (mixedFocus) {
     html += '<div class="card"><h3>Also work on contact</h3><p>Your smash factor is in the middle range used by this tool. Add the face-strike check and half-swing contact drill before increasing the speed-intent portion.</p></div>';
@@ -776,6 +827,19 @@ function runDistanceGainer(event) {
 }
 
 document.getElementById("distanceForm").addEventListener("submit", runDistanceGainer);
+document.getElementById("saveEquipment").addEventListener("click", saveSpeedEquipment);
+document.getElementById("equipmentHomeGym").addEventListener("change", event => {
+  const homeItems = ["bands","dumbbells","bench"];
+  document.querySelectorAll('input[name="speedEquipment"]').forEach(el => {
+    if (homeItems.includes(el.value)) el.checked = event.target.checked;
+  });
+  saveSpeedEquipment();
+});
+document.querySelectorAll('input[name="speedEquipment"]').forEach(el => el.addEventListener("change", () => {
+  const homeItems = ["bands","dumbbells","bench"];
+  document.getElementById("equipmentHomeGym").checked = homeItems.every(x => document.querySelector('input[name="speedEquipment"][value="'+x+'"]').checked);
+  saveSpeedEquipment();
+}));
 
 function numberFrom(id) {
   const raw = document.getElementById(id).value.trim();

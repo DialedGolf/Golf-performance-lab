@@ -280,7 +280,6 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
       <label class="field"><span><input type="checkbox" name="speedEquipment" value="cable"> Cable machine</span></label>
       <label class="field"><span><input type="checkbox" name="speedEquipment" value="machines"> Weight machines</span></label>
       <label class="field"><span><input type="checkbox" name="speedEquipment" value="bench"> Bench or sturdy step</span></label>
-      <label class="field"><span><input type="checkbox" name="speedEquipment" value="barbell"> Barbell / weight plates</span></label>
     </div>
     <p class="muted">No equipment is required. If you leave everything unchecked, the generator creates a bodyweight-and-golf-club session.</p>
     <button type="button" class="secondary" id="saveEquipment">Save Equipment Choices</button>
@@ -294,6 +293,10 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
       <li><strong>Uthoff, Sommerfield &amp; Pichardo (2021):</strong> A systematic review of 20 studies reported that combined general resistance and golf-specific training was associated with average improvements in clubhead speed and hitting distance. <a href="https://pubmed.ncbi.nlm.nih.gov/34224506/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
       <li><strong>Ehlert (2020):</strong> A systematic review of 25 studies found that strength and conditioning programs often improved golf performance measures, though results varied between studies. <a href="https://pubmed.ncbi.nlm.nih.gov/32723013/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
       <li><strong>Ehlert (2021):</strong> A systematic review examined relationships between physical attributes and clubhead speed. Associations do not prove that changing one physical trait will automatically increase speed. <a href="https://pubmed.ncbi.nlm.nih.gov/32981467/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
+      <li><strong>Johansen et al. (2026):</strong> A meta-analysis of 33 studies and 798 golfers found improvements in clubhead speed and distance across structured physical-training programs, but rated the certainty of evidence as low. <a href="https://pubmed.ncbi.nlm.nih.gov/42658467/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
+      <li><strong>Hume, Keogh &amp; Reid (2011):</strong> A systematic review of 13 golf conditioning studies described programs using machine weights, free weights, medicine balls, and elastic bands. Most studies measuring clubhead speed reported increases. <a href="https://pubmed.ncbi.nlm.nih.gov/21547836/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
+      <li><strong>Liu et al. (2026):</strong> A meta-analysis of nine trials (220 golfers) found a small positive effect from core-inclusive training. The authors rated certainty as low and said the apparent benefit of golf-specific rotational core training remains preliminary. <a href="https://pubmed.ncbi.nlm.nih.gov/42942195/" target="_blank" rel="noopener">Read the study on PubMed</a>.</li>
+      <li><strong>Exercise-specific evidence:</strong> The 2021 Uthoff review identified one small study of golf-specific medicine-ball throws with a large reported clubhead-speed change. Because it was a single study, the result should not be treated as a reliable expected gain or proof that medicine-ball throws are best. <a href="https://pubmed.ncbi.nlm.nih.gov/34224506/" target="_blank" rel="noopener">See the review and its study summary</a>.</li>
     </ul>
   </div>
 </section>
@@ -682,7 +685,6 @@ document.querySelectorAll("nav button").forEach(b => b.addEventListener("click",
 const DISTANCE_KEY = "gpl_distance_gainer_v1";
 
 const DISTANCE_EQUIPMENT_KEY = "gpl_distance_equipment_v1";
-const SPEED_EQUIPMENT = ["bands","dumbbells","medicine","cable","machines","bench","barbell"];
 function selectedSpeedEquipment() {
   const selected = [...document.querySelectorAll('input[name="speedEquipment"]:checked')].map(el => el.value);
   if (document.getElementById("equipmentHomeGym").checked) selected.push("bands","dumbbells","bench");

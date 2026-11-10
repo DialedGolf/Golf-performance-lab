@@ -762,10 +762,10 @@ function runDistanceGainer(event) {
   const requiredBall = requiredSpeed && smash ? requiredSpeed * smash : null;
   let focus = "Review contact, launch conditions, and speed together with a golf coach.";
   let priority = "Build a complete distance profile";
-  if (smash !== null && smash < 1.44) {
+  if (smash !== null && smash < 1.45) {
     priority = "Priority: strike efficiency";
     focus = "Your average smash factor suggests an opportunity to improve energy transfer. Work with a qualified golf coach on centered, repeatable contact before prioritizing more speed.";
-  } else if (smash !== null && smash >= 1.47 && avgSpeed !== null) {
+  } else if (smash !== null && smash >= 1.45 && avgSpeed !== null) {
     priority = "Priority: club speed while preserving contact";
     focus = "Your recorded smash factor is relatively efficient. Club speed may be a useful area to investigate, while preserving contact quality and control.";
   } else if (smash !== null) {
@@ -776,8 +776,7 @@ function runDistanceGainer(event) {
     "A simplified estimate is " + requiredSpeed.toFixed(1) + " mph club speed if launch, spin, contact, and conditions remain similar.";
   const ballLine = requiredBall === null ? "Ball-speed estimate unavailable because some data is missing." :
     "At your current smash factor, that would be about " + requiredBall.toFixed(1) + " mph ball speed.";
-  const contactFocus = smash !== null && smash < 1.44;
-  const mixedFocus = smash !== null && smash >= 1.44 && smash < 1.47;
+  const contactFocus = smash !== null && smash < 1.45;
   const plan = contactFocus
     ? [
       "Use impact-location feedback or a coach to establish where your driver strikes the face.",
@@ -806,19 +805,15 @@ function runDistanceGainer(event) {
   html += '</div></div>';
   html += '<div class="card"><h2>Your Distance Gap</h2><p>' + (gap <= 0 ? "Your goal is at or below your recent average carry. Focus on repeatability and dispersion." : "Your goal is " + gap.toFixed(0) + " yards above your recent average carry.") + '</p><p>' + speedLine + '</p><p>' + ballLine + '</p><p class="muted">This simplified square-root estimate assumes other ball-flight factors remain similar. It is not a guaranteed speed requirement or prediction.</p></div>';
   html += '<div class="card"><h2>' + priority + '</h2><p>' + focus + '</p></div>';
+  html += '<div class="card"><h2>Recommended Club-Speed Workout</h2><p>This workout is included for every golfer because developing club speed is a key part of a distance-improvement plan. It adapts to the equipment selected above.</p></div>';
+  html += buildSpeedWorkout(selectedSpeedEquipment());
   if (contactFocus) {
-    html += '<div class="card"><h2>Recommended Contact Drills</h2><p>Start with these low-intensity practice drills. Use impact tape or foot spray only as directed by a coach, and hit balls from a safe practice area.</p><ol>' +
+    html += '<div class="card"><h2>Additional Recommended Contact Drills</h2><p>Your average smash factor is below 1.45, so these drills are included alongside your club-speed workout. Start with low-intensity practice and use impact feedback only as directed by a coach.</p><ol>' +
       '<li style="margin-bottom:12px"><strong>Face-strike check:</strong> Apply impact tape or ask a coach to use an approved face-marking spray. Hit 5 easy shots, note the strike pattern, then make one setup or tee-height adjustment at a time. Repeat for 2 rounds. Aim for a tighter pattern, not extra distance.</li>' +
-      '<li style="margin-bottom:12px"><strong>Tee-gate drill:</strong> With a coach helping set it up, place two tees just wider than the clubhead around the impact area. Make 2 sets of 5 slow practice swings through the gate without touching either tee. This encourages a repeatable delivery.</li>' +
-      '<li style="margin-bottom:12px"><strong>Half-swing contact drill:</strong> Make waist-high-to-waist-high swings at an easy pace for 2 sets of 5 balls. Keep balance and a steady finish. Gradually lengthen the swing only while contact stays controlled.</li>' +
-      '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor with your starting set.</li>' +
-      '</ol><p class="muted">Suggested practice: 1–2 short sessions per week, with a rest day between sessions. Stop if anything hurts and ask a coach to check the setup.</p></div>';
-  } else {
-    html += '<div class="card"><h2>Recommended Club-Speed Practice Session</h2><p>Your workout below adapts to the equipment selected above. The research supports combined strength and golf-specific conditioning, but does not prove that one exercise produces the largest speed gain for every golfer.</p></div>';
-    html += buildSpeedWorkout(selectedSpeedEquipment());
-  }
-  if (mixedFocus) {
-    html += '<div class="card"><h3>Also work on contact</h3><p>Your smash factor is in the middle range used by this tool. Add the face-strike check and half-swing contact drill before increasing the speed-intent portion.</p></div>';
+      '<li style="margin-bottom:12px"><strong>Tee-gate drill:</strong> With a coach helping set it up, place two tees just wider than the clubhead around the impact area. Make 2 sets of 5 slow practice swings through the gate without touching either tee.</li>' +
+      '<li style="margin-bottom:12px"><strong>Half-swing contact drill:</strong> Make waist-high-to-waist-high swings at an easy pace for 2 sets of 5 balls. Keep balance and a steady finish.</li>' +
+      '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor.</li>' +
+      '</ol><p class="muted">Keep these drills controlled and separate from speed-focused swings if contact becomes inconsistent. Stop if anything hurts and ask a coach to check the setup.</p></div>';
   }
   html += '<div class="card"><h2>Your Action Plan</h2><ol>';
   plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });

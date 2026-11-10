@@ -734,6 +734,77 @@ function buildSpeedWorkout(equipment) {
   return html;
 }
 
+
+function buildDistanceLimiters(driverShots) {
+  const average = key => mean(driverShots.filter(s => s[key] !== null && s[key] !== undefined && Number.isFinite(Number(s[key]))).map(s => Number(s[key])));
+  const spin = average("spin"), attack = average("attack"), launch = average("launch");
+  const clubSpeed = average("clubSpeed"), ballSpeed = average("ballSpeed");
+  const smash = mean(driverShots.filter(s => Number(s.clubSpeed)>0 && Number(s.ballSpeed)>0).map(s => Number(s.ballSpeed)/Number(s.clubSpeed)));
+  const path = average("path"), face = average("face"), faceToPath = average("ftp");
+  const findings = [];
+  const add = (title,evidence,explanation,action,confidence) => findings.push({title,evidence,explanation,action,confidence});
+
+  if (spin !== null && spin > 3000) {
+    if (attack !== null && attack < -2) {
+      add("High spin + a downward attack angle","Average backspin " + Math.round(spin) + " rpm; attack angle " + attack.toFixed(1) + "°.",
+      "A downward strike can contribute to a higher-spin delivery, but it is not the only possible cause. Delivered loft, strike location, club setup, ball, and speed also affect spin.",
+      "With a coach, check impact location using face spray or impact tape. Try easy tee shots focused on brushing through the ball with balance and a low point just beyond it. Keep your normal posture; do not force a big upward hit.","Pattern worth checking");
+    } else {
+      add("Higher-than-expected driver spin","Average backspin " + Math.round(spin) + " rpm" + (attack === null ? "; attack angle not recorded." : "; attack angle " + attack.toFixed(1) + "°."),
+      "Spin is influenced by delivered loft, strike location, attack angle, clubhead speed, and equipment. Spin alone cannot identify the cause.",
+      "Check strike location first with face spray or impact tape, then ask a coach or fitter to review delivered loft and attack angle. Compare several centered strikes before changing setup variables.","Possible limiter");
+    }
+  } else if (spin !== null && spin > 0 && spin < 1800) {
+    add("Very low recorded driver spin","Average backspin " + Math.round(spin) + " rpm.",
+    "Very low spin can make flight less stable or reduce carry for some golfers, but the useful range depends on speed, launch, strike, ball, and club. Lower is not automatically better.",
+    "Do not try to add spin just to reach a target number. Check centered contact and review launch and carry together with a qualified coach or fitter.","Check the full ball flight");
+  }
+
+  if (attack !== null && attack < -3) {
+    add("A noticeably downward driver attack angle","Average attack angle " + attack.toFixed(1) + "°.",
+    "A downward attack angle may contribute to a high-spin or low-launch combination. It does not prove that it is costing distance by itself.",
+    "Try easy tee shots focused on balanced setup and brushing through the tee area after the ball. Have a coach check ball position and low point; avoid leaning back or scooping.","Possible limiter");
+  } else if (attack !== null && attack > 6) {
+    add("A very upward recorded attack angle","Average attack angle +" + attack.toFixed(1) + "°.",
+    "An upward strike can be useful with a driver, but an unusually high value may occur with inconsistent contact or a delivery worth checking.",
+    "Compare strike location, launch, spin, and dispersion across several balanced swings. Ask a coach to verify the monitor reading and setup before making changes.","Check consistency");
+  }
+
+  if (launch !== null && launch < 9) {
+    add("Low driver launch","Average launch " + launch.toFixed(1) + "°.",
+    "Low launch can reduce carry for some golfers. Possible contributors include delivered loft, attack angle, strike location, and equipment; this average cannot separate them.",
+    "Use face spray to check whether contact is consistently low on the face, then review tee height, ball position, and delivered loft with a coach. Make one small adjustment at a time.","Possible limiter");
+  } else if (launch !== null && launch > 18) {
+    add("High driver launch","Average launch " + launch.toFixed(1) + "°.",
+    "High launch is not automatically bad. Its effect depends on spin, speed, strike, and delivery. It is worth reviewing when paired with high spin or unusually short carry.",
+    "Compare launch and spin on centered strikes. Ask a coach or fitter to check delivered loft and equipment rather than deliberately hitting lower.","Review with spin and strike");
+  }
+
+  if (smash !== null && smash < 1.45) {
+    add("Ball-speed efficiency / strike quality","Average smash factor " + smash.toFixed(2) + ".",
+    "A lower average smash factor can indicate that club speed is not being converted into ball speed as efficiently. Off-center contact is one possible reason, but the monitor and shot sample matter.",
+    "Use face spray or impact tape to map contact. Practice controlled half-swings and centered-contact reps, then compare ball speed and smash factor. A coach can check monitor consistency.","Possible limiter");
+  }
+
+  if (clubSpeed !== null && ballSpeed !== null && smash !== null && smash >= 1.45 && clubSpeed < 95) {
+    add("Club speed may be a distance opportunity","Average club speed " + clubSpeed.toFixed(1) + " mph; ball speed " + ballSpeed.toFixed(1) + " mph.",
+    "Your recorded strike efficiency is relatively strong, so improving speed while maintaining contact may be useful. This does not mean swinging harder on every shot.",
+    "Use the controlled, age-appropriate club-speed workout below and track both speed and centered contact. Stop if you feel pain or lose control.","Training opportunity");
+  }
+
+  if (path !== null && face !== null && faceToPath !== null && Math.abs(faceToPath) > 4) {
+    add("Face-to-path relationship may affect consistency","Average path " + path.toFixed(1) + "°; face " + face.toFixed(1) + "°; face-to-path " + faceToPath.toFixed(1) + "°.",
+    "A larger face-to-path difference can create more curve and make repeatable contact harder. It is more directly related to direction and curvature than raw distance, but inconsistent contact can affect distance too.",
+    "Have a coach check face and path together. Practice short, controlled swings with a consistent start line; do not change path or face based on one average alone.","Consistency factor");
+  }
+
+  if (!findings.length) return '<div class="card"><h2>Other Distance Limiters</h2><p>Your recorded metrics do not currently show a clear flag from the checks available. That does not mean every launch condition is optimized. Keep recording attack angle, launch, spin, club speed, and ball speed, and review centered strikes with a coach.</p><p class="muted">These are broad screening checks, not fitting targets or a diagnosis.</p></div>';
+  let html = '<div class="card"><h2>Other Distance Limiters</h2><p class="muted">These are clues from recent driver averages, not proof of cause. Several factors interact, and ideal launch conditions vary by golfer.</p>';
+  findings.forEach(f => { html += '<div style="border-top:1px solid var(--border, #ddd);padding:12px 0"><h3>' + f.title + '</h3><p><strong>Your data:</strong> ' + f.evidence + '</p><p>' + f.explanation + '</p><p><strong>What to try:</strong> ' + f.action + '</p><p class="muted"><strong>Interpretation:</strong> ' + f.confidence + '</p></div>'; });
+  html += '<p class="notice">Launch, spin, attack angle, and smash factor are affected by club, ball, monitor, strike location, and delivery. Use consistent shots and a qualified coach or fitter before major swing or equipment changes.</p></div>';
+  return html;
+}
+
 function runDistanceGainer(event) {
   event.preventDefault();
   const goal = Number(document.getElementById("distanceGoal").value);
@@ -815,6 +886,7 @@ function runDistanceGainer(event) {
       '<li style="margin-bottom:12px"><strong>Re-test:</strong> Hit 5 normal, comfortable driver shots and compare strike pattern, ball speed, and smash factor.</li>' +
       '</ol><p class="muted">Keep these drills controlled and separate from speed-focused swings if contact becomes inconsistent. Stop if anything hurts and ask a coach to check the setup.</p></div>';
   }
+  html += buildDistanceLimiters(driverShots);
   html += '<div class="card"><h2>Your Action Plan</h2><ol>';
   plan.forEach(item => { html += '<li style="margin-bottom:10px">' + item + '</li>'; });
   html += '</ol><div class="notice">' + trainingNote + '</div></div>';

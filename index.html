@@ -741,16 +741,31 @@ function saveDistanceSnapshot() {
     message.textContent = "Record at least 5 driver shots before saving a progress snapshot.";
     return;
   }
+  const history = readDistanceProgress();
+  const sampleIds = sample.map(s => s.id).filter(Boolean).sort();
+  const latest = history.length ? history[history.length - 1] : null;
+  const sameShots = latest && Array.isArray(latest.shotIds) &&
+    latest.shotIds.length === sampleIds.length &&
+    latest.shotIds.every((id,index) => id === sampleIds[index]);
+  const sameMetrics = latest && !Array.isArray(latest.shotIds) &&
+    latest.shotCount === sample.length &&
+    latest.carry === progressAverage(sample,"carry") &&
+    latest.clubSpeed === progressAverage(sample,"clubSpeed") &&
+    latest.ballSpeed === progressAverage(sample,"ballSpeed");
+  if (sameShots || sameMetrics) {
+    message.textContent = "No new driver shots since your last snapshot. Record new shots before saving progress again.";
+    return;
+  }
   const snapshot = {
     id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
     date: new Date().toISOString(),
     shotCount: sample.length,
+    shotIds: sampleIds,
     carry: progressAverage(sample,"carry"),
     clubSpeed: progressAverage(sample,"clubSpeed"),
     ballSpeed: progressAverage(sample,"ballSpeed"),
     smash: mean(sample.filter(s => Number(s.clubSpeed)>0 && Number(s.ballSpeed)>0).map(s => Number(s.ballSpeed)/Number(s.clubSpeed)))
   };
-  const history = readDistanceProgress();
   history.push(snapshot);
   try {
     localStorage.setItem(DISTANCE_PROGRESS_KEY,JSON.stringify(history));

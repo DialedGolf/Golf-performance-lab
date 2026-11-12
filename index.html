@@ -743,16 +743,27 @@ function saveDistanceSnapshot() {
   }
   const history = readDistanceProgress();
   const sampleIds = sample.map(s => s.id).filter(Boolean).sort();
+  // Use the actual shot data as a stable fingerprint. Shot IDs can be absent
+  // or refreshed during syncing, so IDs alone are not a reliable duplicate check.
+  const sampleSignature = JSON.stringify(sample.map(s => ({
+    id: s.id || null,
+    date: s.date || null,
+    club: String(s.club || "").toLowerCase(),
+    carry: Number(s.carry),
+    clubSpeed: s.clubSpeed == null ? null : Number(s.clubSpeed),
+    ballSpeed: s.ballSpeed == null ? null : Number(s.ballSpeed)
+  })));
   const latest = history.length ? history[history.length - 1] : null;
-  const sameShots = latest && Array.isArray(latest.shotIds) &&
+  const sameSignature = latest && latest.sampleSignature === sampleSignature;
+  const sameShots = latest && Array.isArray(latest.shotIds) && sampleIds.length > 0 &&
     latest.shotIds.length === sampleIds.length &&
     latest.shotIds.every((id,index) => id === sampleIds[index]);
-  const sameMetrics = latest && !Array.isArray(latest.shotIds) &&
+  const sameLegacyMetrics = latest && !latest.sampleSignature &&
     latest.shotCount === sample.length &&
     latest.carry === progressAverage(sample,"carry") &&
     latest.clubSpeed === progressAverage(sample,"clubSpeed") &&
     latest.ballSpeed === progressAverage(sample,"ballSpeed");
-  if (sameShots || sameMetrics) {
+  if (sameSignature || sameShots || sameLegacyMetrics) {
     message.textContent = "No new driver shots since your last snapshot. Record new shots before saving progress again.";
     return;
   }
@@ -761,6 +772,7 @@ function saveDistanceSnapshot() {
     date: new Date().toISOString(),
     shotCount: sample.length,
     shotIds: sampleIds,
+    sampleSignature,
     carry: progressAverage(sample,"carry"),
     clubSpeed: progressAverage(sample,"clubSpeed"),
     ballSpeed: progressAverage(sample,"ballSpeed"),

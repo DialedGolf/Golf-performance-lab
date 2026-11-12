@@ -287,6 +287,14 @@ footer { text-align: center; color: var(--muted); padding: 20px; }
     <p id="equipmentMessage" class="muted" role="status"></p>
   </div>
   <div id="distanceResults" aria-live="polite"></div>
+  <div class="card" id="distanceTracker">
+    <h2>Track Your Distance Gains</h2>
+    <p>Save a snapshot of your recent driver performance after a practice session. Over time, you can compare your average carry, club speed, ball speed, and smash factor.</p>
+    <p class="muted">For a fair comparison, use the same launch monitor, driver, ball, and similar conditions when possible. Each snapshot uses your 20 most recent recorded driver shots and requires at least 5.</p>
+    <button type="button" class="primary" id="saveDistanceSnapshot">Save Current Progress</button>
+    <p id="trackerMessage" class="muted" role="status"></p>
+    <div id="distanceProgressHistory"><p class="muted">No progress saved yet. After recording at least 5 driver shots, save your first snapshot here.</p></div>
+  </div>
   <details class="card">
     <summary><strong>Research behind the recommendations</strong> <span class="muted">· Study links and evidence notes</span></summary>
     <p>These studies support broad training principles. They do not prove that a specific routine will produce the same result for every golfer, or that a study exactly matches your age and height.</p>
@@ -709,6 +717,84 @@ function loadDistanceForm() {
     document.getElementById("distanceResults").innerHTML = "";
   } catch (err) { console.warn("Could not load Distance Gainer settings:", err); }
 }
+
+const DISTANCE_PROGRESS_KEY = "gpl_distance_progress_v1";
+function getDriverProgressSample() {
+  return shots.filter(s => String(s.club || "").toLowerCase() === "driver" && Number.isFinite(Number(s.carry)))
+    .slice().sort((a,b) => new Date(b.date || 0) - new Date(a.date || 0)).slice(0,20);
+}
+function progressAverage(sample,key) {
+  const values = sample.filter(s => s[key] !== null && s[key] !== undefined && Number.isFinite(Number(s[key])) && Number(s[key]) > 0)
+    .map(s => Number(s[key]));
+  return values.length ? mean(values) : null;
+}
+function readDistanceProgress() {
+  try {
+    const value = JSON.parse(localStorage.getItem(DISTANCE_PROGRESS_KEY) || "[]");
+    return Array.isArray(value) ? value : [];
+  } catch (err) { return []; }
+}
+function saveDistanceSnapshot() {
+  const sample = getDriverProgressSample();
+  const message = document.getElementById("trackerMessage");
+  if (sample.length < 5) {
+    message.textContent = "Record at least 5 driver shots before saving a progress snapshot.";
+    return;
+  }
+  const snapshot = {
+    id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+    date: new Date().toISOString(),
+    shotCount: sample.length,
+    carry: progressAverage(sample,"carry"),
+    clubSpeed: progressAverage(sample,"clubSpeed"),
+    ballSpeed: progressAverage(sample,"ballSpeed"),
+    smash: mean(sample.filter(s => Number(s.clubSpeed)>0 && Number(s.ballSpeed)>0).map(s => Number(s.ballSpeed)/Number(s.clubSpeed)))
+  };
+  const history = readDistanceProgress();
+  history.push(snapshot);
+  try {
+    localStorage.setItem(DISTANCE_PROGRESS_KEY,JSON.stringify(history));
+    message.textContent = "Progress snapshot saved on this device.";
+    renderDistanceProgress();
+  } catch (err) {
+    message.textContent = "Could not save this snapshot. Your browser storage may be full or unavailable.";
+  }
+}
+function deleteDistanceSnapshot(id) {
+  const history = readDistanceProgress().filter(item => item.id !== id);
+  try { localStorage.setItem(DISTANCE_PROGRESS_KEY,JSON.stringify(history)); renderDistanceProgress(); }
+  catch (err) { document.getElementById("trackerMessage").textContent = "Could not update saved progress."; }
+}
+function renderDistanceProgress() {
+  const target = document.getElementById("distanceProgressHistory");
+  if (!target) return;
+  const history = readDistanceProgress().sort((a,b) => new Date(a.date)-new Date(b.date));
+  if (!history.length) {
+    target.innerHTML = '<p class="muted">No progress saved yet. After recording at least 5 driver shots, save your first snapshot here.</p>';
+    return;
+  }
+  const first = history[0];
+  const latest = history[history.length-1];
+  const change = (key,digits=1,unit="") => {
+    if (!Number.isFinite(first[key]) || !Number.isFinite(latest[key])) return "Not enough data";
+    const diff = latest[key]-first[key];
+    return (diff>0?"+":"") + diff.toFixed(digits) + unit + " since first snapshot";
+  };
+  let html = '<div class="grid" style="margin-top:14px">' +
+    '<div class="card"><div class="muted">Carry change</div><strong>' + change("carry",1," yd") + '</strong></div>' +
+    '<div class="card"><div class="muted">Club-speed change</div><strong>' + change("clubSpeed",1," mph") + '</strong></div>' +
+    '<div class="card"><div class="muted">Ball-speed change</div><strong>' + change("ballSpeed",1," mph") + '</strong></div>' +
+    '<div class="card"><div class="muted">Smash-factor change</div><strong>' + change("smash",2,"") + '</strong></div></div>' +
+    '<h3>Saved progress (' + history.length + ')</h3><div style="overflow-x:auto"><table><thead><tr><th>Date</th><th>Shots</th><th>Carry</th><th>Club speed</th><th>Ball speed</th><th>Smash</th><th></th></tr></thead><tbody>';
+  history.slice().reverse().forEach(item => {
+    const date = new Date(item.date).toLocaleDateString();
+    const value = (n,d=1) => Number.isFinite(n) ? n.toFixed(d) : "—";
+    html += '<tr><td>' + date + '</td><td>' + item.shotCount + '</td><td>' + value(item.carry) + ' yd</td><td>' + value(item.clubSpeed) + ' mph</td><td>' + value(item.ballSpeed) + ' mph</td><td>' + value(item.smash,2) + '</td><td><button type="button" class="danger" onclick="deleteDistanceSnapshot(\'' + item.id + '\')">Delete</button></td></tr>';
+  });
+  html += '</tbody></table></div><p class="muted">Changes compare your latest snapshot with your first saved snapshot. A positive number is an increase, not necessarily proof of lasting improvement; day-to-day conditions and shot variation matter.</p>';
+  target.innerHTML = html;
+}
+
 function buildSpeedWorkout(equipment) {
   const has = item => equipment.includes(item);
   const exercises = [
@@ -895,6 +981,8 @@ function runDistanceGainer(event) {
   try { localStorage.setItem(DISTANCE_KEY, JSON.stringify({goal:goal,html:html})); } catch (err) { console.warn("Could not save Distance Gainer plan locally:", err); }
 }
 
+document.getElementById("saveDistanceSnapshot").addEventListener("click", saveDistanceSnapshot);
+renderDistanceProgress();
 document.getElementById("distanceForm").addEventListener("submit", runDistanceGainer);
 document.getElementById("saveEquipment").addEventListener("click", saveSpeedEquipment);
 document.getElementById("equipmentHomeGym").addEventListener("change", event => {
